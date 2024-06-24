@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/grafana/auto-triage/pkg/cmd/github"
@@ -102,6 +103,8 @@ func main() {
 	fmt.Printf(":: Got issue: %s\n", issueData.Title)
 
 	genModel := geminiClient.GenerativeModel(geminiModelName)
+
+	//find relevant historic issues to feed the model
 	relatedIssuesContent, err := historian.FindRelevantDocuments(
 		geminiClient.EmbeddingModel(embbedModelName),
 		genModel,
@@ -118,11 +121,7 @@ func main() {
 
 	fmt.Printf(":: Found %d relevant issues\n", len(relatedIssuesContent))
 
-	relatedIssuePrompts := ""
-
-	for _, doc := range relatedIssuesContent {
-		relatedIssuePrompts += fmt.Sprintf("--##--\n%s\n--##--\n", doc)
-	}
+	relatedIssuePrompts := strings.Join(relatedIssuesContent, "---##$$##---")
 
 	prompt := `
 
