@@ -141,7 +141,7 @@ func saveIssue(db *sql.DB, issue commontypes.Issue) {
 
 	_, err = db.Exec(`
 		INSERT OR REPLACE INTO issues (id, title, description, processed, labels, raw)
-		VALUES (?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`, issue.Number, issue.Title, issue.Description, 0, string(labels), string(issue.Raw))
 
 	if err != nil {
