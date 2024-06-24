@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
+	"strconv"
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/grafana/auto-triage/pkg/cmd/github"
+	"github.com/grafana/auto-triage/pkg/cmd/historian"
 	"github.com/grafana/auto-triage/pkg/cmd/vectorizer"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/philippgille/chromem-go"
@@ -17,6 +20,8 @@ import (
 )
 
 var geminiKey = os.Getenv("GEMINI_API_KEY")
+var geminiModelName = "gemini-1.5-pro"
+var embbedModelName = "embedding-001"
 
 var (
 	issueDbFile   = flag.String("issuesDb", "github-data.sqlite", "Issue database file")
@@ -66,6 +71,7 @@ func main() {
 		}
 		defer sqliteDb.Close()
 		err = vectorizer.VectorizeIssues(
+			embbedModelName,
 			geminiClient,
 			vectorDbInstance,
 			sqliteDb,
@@ -77,255 +83,77 @@ func main() {
 		fmt.Println(":: Done updating vectors")
 	}
 
+	areaLabelsContent, err := os.ReadFile(path.Join("fixtures", "areaLabels.txt"))
+	if err != nil {
+		log.Fatal("Error reading typeLabels.txt: ", err)
+	}
+	areaLabels := string(areaLabelsContent)
+
+	typeLabelsContent, err := os.ReadFile(path.Join("fixtures", "typeLabels.txt"))
+	if err != nil {
+		log.Fatal("Error reading areaLabels.txt: ", err)
+	}
+	typeLabels := string(typeLabelsContent)
+
 	issueData, err := github.FetchIssueDetails(*issueId)
 	if err != nil {
 		log.Fatal("Error fetching issue details: ", err)
 	}
 	fmt.Printf(":: Got issue: %s\n", issueData.Title)
 
-	relatedContent, err := findRelevantDocuments(geminiClient, collection, issueData)
+	genModel := geminiClient.GenerativeModel(geminiModelName)
+	relatedIssuesContent, err := historian.FindRelevantDocuments(
+		geminiClient.EmbeddingModel(embbedModelName),
+		genModel,
+		collection,
+		issueData,
+	)
 	if err != nil {
 		log.Fatal("Error finding relevant documents: ", err)
 	}
-	fmt.Printf(":: Found %d relevant documents\n", len(relatedContent))
-
-	if len(relatedContent) == 0 {
+	if len(relatedIssuesContent) == 0 {
 		fmt.Println(":: No relevant documents found. Skipping triage")
 		return
 	}
 
+	fmt.Printf(":: Found %d relevant issues\n", len(relatedIssuesContent))
+
 	relatedIssuePrompts := ""
 
-	for _, doc := range relatedContent {
+	for _, doc := range relatedIssuesContent {
 		relatedIssuePrompts += fmt.Sprintf("--##--\n%s\n--##--\n", doc)
 	}
 
-	promptTemplate := `
+	prompt := `
 
 	Based on the following historic issue data:
 
-	---- START HISTORIC DATA ----
-	%s
+	---- START HISTORIC DATA ----` +
+		relatedIssuePrompts +
+		`
 	---- END HISTORIC DATA ----
 
 	And the current issue:
 
 	---- START CURRENT ISSUE ---- 
-	Title: %s
-	Description %s
+	ID: ` + strconv.Itoa(issueData.Number) + `
+	Title: ` + issueData.Title + `
+	Description : ` + issueData.Body + `
 	---- END CURRENT ISSUE ----
 
-	Categorize the issue as one of the following:
+	Categorize the issue:
 
-	In one of the following types:
+	In one of the following types:` +
+		typeLabels +
+		`
+	In one of the following areas:` +
+		areaLabels +
+		``
 
-	type/accessibility
-  type/angular-2-react
-  type/browser-compatibility
-  type/bug
-  type/build-packaging
-  type/chore
-  type/ci
-  type/cleanup
-  type/codegen
-  type/community
-  type/debt
-  type/design
-  type/discussion
-  type/docs
-  type/duplicate
-  type/e2e
-  type/epic
-  type/feature-request
-  type/feature-toggle-enable
-  type/feature-toggle-removal
-  type/performance
-  type/poc
-  type/project
-  type/proposal
-  type/question
-  type/refactor
-  type/regression
-  type/roadmap
-  type/tech
-  type/ux
-
-  In one of the following areas:
-
-  area/admin/user
-  area/alerting
-  area/alerting-legacy
-  area/alerting/compliance
-  area/alerting/evaluation
-  area/alerting/notifications
-  area/alerting/screenshots
-  area/annotations
-  area/auth
-  area/auth/authproxy
-  area/auth/ldap
-  area/auth/oauth
-  area/auth/rbac
-  area/auth/saml
-  area/auth/serviceaccount
-  area/backend
-  area/backend/api
-  area/backend/config
-  area/backend/db
-  area/backend/db/migration
-  area/backend/db/mysql
-  area/backend/db/postgres
-  area/backend/db/sql
-  area/backend/db/sqlite
-  area/backend/logging
-  area/backend/plugins
-  area/backend/security
-  area/backend/user
-  area/backend_srv
-  area/configuration
-  area/dashboard
-  area/dashboard/data-links
-  area/dashboard/drag-n-drop
-  area/dashboard/folders
-  area/dashboard/history
-  area/dashboard/import
-  area/dashboard/links
-  area/dashboard/previews
-  area/dashboard/rows
-  area/dashboard/schemas
-  area/dashboard/scripted
-  area/dashboard/snapshot
-  area/dashboard/templating
-  area/dashboard/timerange
-  area/dashboard/timezone
-  area/dashboards/panel
-  area/dashgpt
-  area/data/export
-  area/dataframe
-  area/dataplane
-  area/datasource
-  area/datasource/backend
-  area/datasource/frontend
-  area/datasource/proxy
-  area/dataviz
-  area/developer-portal
-  area/devenv
-  area/docker
-  area/drag-n-drop
-  area/editor
-  area/explore
-  area/expressions
-  area/field/overrides
-  area/frontend
-  area/frontend/code-editor
-  area/frontend/library-panels
-  area/frontend/library-variables
-  area/frontend/login
-  area/generativeAI
-  area/glue
-  area/grafana-cli
-  area/grafana.com
-  area/grafana/data
-  area/grafana/e2e
-  area/grafana/runtime
-  area/grafana/toolkit
-  area/grafana/ui
-  area/grpc-server
-  area/http-server
-  area/image-rendering
-  area/imagestore
-  area/instrumentation
-  area/internationalization
-  area/kindsys
-  area/legend
-  area/libraries
-  area/live
-  area/logs
-  area/mailing
-  area/manage-dashboards
-  area/meta-analytics
-  area/mobile-support
-  area/navigation
-  area/panel-chrome
-  area/panel/alertlist
-  area/panel/annotation-list
-  area/panel/barchart
-  area/panel/bargauge
-  area/panel/candlestick
-  area/panel/canvas
-  area/panel/common
-  area/panel/dashboard-list
-  area/panel/data
-  area/panel/datagrid
-  area/panel/edit
-  area/panel/flame-graph
-  area/panel/gauge
-  area/panel/geomap
-  area/panel/graph
-  area/panel/heatmap
-  area/panel/histogram
-  area/panel/icon
-  area/panel/infrastructure
-  area/panel/logs
-  area/panel/news
-  area/panel/node-graph
-  area/panel/piechart
-  area/panel/singlestat
-  area/panel/stat
-  area/panel/state-timeline
-  area/panel/status-history
-  area/panel/support
-  area/panel/table
-  area/panel/text
-  area/panel/timeseries
-  area/panel/traceview
-  area/panel/trend
-  area/panel/xychart
-  area/permissions
-  area/playlist
-  area/plugin-extensions
-  area/plugins
-  area/plugins-catalog
-  area/plugins/app
-  area/plugins/sandbox
-  area/profiling
-  area/provisioning
-  area/public-dashboards
-  area/query-editor
-  area/recorded-queries
-  area/resourcepicker
-  area/reusable-queries
-  area/routing
-  area/scenes
-  area/schema
-  area/search
-  area/security
-  area/short-url
-  area/shortcuts
-  area/stack
-  area/storybook
-  area/streaming
-  area/teams
-  area/templating/repeating
-  area/text-formatting
-  area/thema
-  area/tooltip
-  area/tracing
-  area/transformations
-  area/ui/theme
-  area/units
-  area/ux
-  area/value-mapping
-
-
-	`
-
-	prompt := fmt.Sprintf(promptTemplate, relatedIssuePrompts)
-
-	model := geminiClient.GenerativeModel("gemini-1.5-pro")
-	model.GenerationConfig.ResponseMIMEType = "application/json"
+	genModel.GenerationConfig.ResponseMIMEType = "application/json"
 
 	// system prompt. Has the most weight
-	model.SystemInstruction = &genai.Content{
+	genModel.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
 			genai.Text(
 				`
@@ -346,7 +174,7 @@ func main() {
 		},
 	}
 
-	resp, err := model.GenerateContent(context.Background(), genai.Text(prompt))
+	resp, err := genModel.GenerateContent(context.Background(), genai.Text(prompt))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -403,43 +231,6 @@ func validateFlags() error {
 	}
 
 	return nil
-}
-
-func findRelevantDocuments(
-	geminiClient *genai.Client,
-	collection *chromem.Collection,
-	issue github.Issue,
-) ([]string, error) {
-	embbedModel := geminiClient.EmbeddingModel("embedding-001")
-
-	embedding, err := embbedModel.EmbedContentWithTitle(
-		context.Background(),
-		issue.Title,
-		genai.Text(issue.Body),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	documents, err := collection.QueryEmbedding(
-		context.Background(),
-		embedding.Embedding.Values,
-		50,
-		nil,
-		nil,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	results := make([]string, len(documents))
-	for i, doc := range documents {
-		results[i] = doc.Content
-	}
-
-	return results, nil
-
 }
 
 func getTextContentFromModelContentResponse(modelResponse *genai.GenerateContentResponse) string {

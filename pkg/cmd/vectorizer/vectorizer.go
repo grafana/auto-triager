@@ -28,6 +28,7 @@ type BatchItem struct {
 }
 
 func VectorizeIssues(
+	embbedModelName string,
 	geminiClient *genai.Client,
 	vectorDb *chromem.DB,
 	sqliteDb *sql.DB,
@@ -38,7 +39,7 @@ func VectorizeIssues(
 
 	ctx := context.Background()
 
-	embbedModel := geminiClient.EmbeddingModel("embedding-001")
+	embbedModel := geminiClient.EmbeddingModel(embbedModelName)
 
 	collection, err := vectorDb.GetOrCreateCollection("issues", nil, nil)
 	if err != nil {
