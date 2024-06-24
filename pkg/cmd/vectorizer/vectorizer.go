@@ -53,6 +53,10 @@ func VectorizeIssues(
 		fmt.Printf("Error scanning row: %v\n", err)
 		return err
 	}
+	if totalCount == 0 {
+		fmt.Printf(":: No issues to process. Skipping update of vectors\n")
+		return nil
+	}
 
 	totalBatches := (totalCount + batchSize - 1) / batchSize
 

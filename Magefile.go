@@ -102,14 +102,14 @@ func (Run) Scrapper() error {
 
 }
 
-func (Run) Triager(ctx context.Context, url string) error {
+func (Run) Triager(ctx context.Context, id string) error {
 	mg.Deps(
 		Build.Commands,
 	)
 
 	command := []string{
 		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager",
-		"-issueUrl=" + fmt.Sprintf("\"%s\"", url),
+		"-issueId=" + id,
 		"-updateVectors=true",
 		"-vectorDb=vector.db",
 		"-issuesDb=github-data.sqlite",
