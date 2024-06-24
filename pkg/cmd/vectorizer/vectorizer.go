@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/grafana/auto-triage/pkg/commontypes"
@@ -15,7 +16,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const numWorkers = 5
+const numWorkers = 10
+const batchSize = 100
 
 type Task struct {
 	ID          int
@@ -35,7 +37,7 @@ func worker(id int, tasks <-chan Task, wg *sync.WaitGroup, ops WorkerOps) {
 	ctx := context.Background()
 	defer wg.Done()
 	for task := range tasks {
-		fmt.Printf("Worker %d processing issue %d\n", id, task.ID)
+		// fmt.Printf("Worker %d processing issue %d\n", id, task.ID)
 
 		content := `
 			  Title: ` + task.Title + `
@@ -59,20 +61,15 @@ func worker(id int, tasks <-chan Task, wg *sync.WaitGroup, ops WorkerOps) {
 			fmt.Printf("Error storing embedding for issue %d '%s': %v\n", task.ID, task.Title, err)
 			return
 		}
-
-		// mark the issue as processed
-		_, err = ops.sqliteDB.Exec("UPDATE issues SET processed = 1 WHERE id = ?", task.ID)
-		if err != nil {
-			fmt.Printf("Error marking issue %d as processed: %v\n", task.ID, err)
-			return
-		}
-
-		fmt.Printf("Worker %d processed issue %d\n", id, task.ID)
-
 	}
+	fmt.Printf("Worker %d done\n", id)
 }
 
-func VectorizeIssues(collection *chromem.Collection, issueDbFile *string) error {
+func VectorizeIssues(
+	collection *chromem.Collection,
+	issueDbFile *string,
+	saveDb func() error,
+) error {
 	// open sqlite db
 	sqliteDb, err := sql.Open("sqlite3", *issueDbFile)
 	if err != nil {
@@ -81,64 +78,86 @@ func VectorizeIssues(collection *chromem.Collection, issueDbFile *string) error 
 
 	defer sqliteDb.Close()
 
-	row := sqliteDb.QueryRow("SELECT count(*) as count FROM issues WHERE processed = 0")
+	batchCount := 0
+	for {
+		batchCount++
+		row := sqliteDb.QueryRow("SELECT count(*) as count FROM issues WHERE processed = 0")
 
-	var count int
-	err = row.Scan(&count)
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return fmt.Errorf("no issues found in %s", *issueDbFile)
-	}
-
-	fmt.Printf("Found %d issues in %s\n", count, *issueDbFile)
-
-	count = collection.Count()
-	fmt.Printf("Found %d vectors in collection\n", count)
-
-	rows, err := sqliteDb.Query(
-		"SELECT id, title, description, labels, raw FROM issues WHERE processed = 0",
-	)
-	if err != nil {
-		return err
-	}
-
-	tasks := make(chan Task, numWorkers)
-	var wg sync.WaitGroup
-
-	// Start worker goroutines.
-	for i := 1; i <= numWorkers; i++ {
-		wg.Add(1)
-		go worker(i, tasks, &wg, WorkerOps{collection, sqliteDb})
-	}
-
-	count = 0
-
-	for rows.Next() {
-		var id int
-		var title string
-		var description string
-		var labels string
-		var raw string
-		err = rows.Scan(&id, &title, &description, &labels, &raw)
+		var count int
+		err = row.Scan(&count)
 		if err != nil {
+			fmt.Printf("Error scanning row: %v\n", err)
+			return err
+		}
+		if count == 0 {
+			fmt.Printf("No more issues to process\n")
+			break
+		}
+
+		tasks := make(chan Task, numWorkers)
+		var wg sync.WaitGroup
+
+		// Start worker goroutines.
+		for i := 1; i <= numWorkers; i++ {
+			wg.Add(1)
+			go worker(i, tasks, &wg, WorkerOps{collection, sqliteDb})
+		}
+
+		fmt.Printf("Found %d issues to process\n", count)
+		fmt.Printf("Batch %d\n", batchCount)
+
+		rows, err := sqliteDb.Query(
+			"SELECT id, title, description, labels, raw FROM issues WHERE processed = 0 ORDER BY id ASC LIMIT ?",
+			batchSize,
+		)
+
+		if err != nil {
+			fmt.Printf("Error querying issues: %v\n", err)
 			return err
 		}
 
-		tasks <- Task{
-			ID:          id,
-			Title:       title,
-			Description: description,
-			Labels:      parseLabels(labels),
+		count = 0
+		ids := []string{}
+		for rows.Next() {
+			var id int
+			var title string
+			var description string
+			var labels string
+			var raw string
+			err = rows.Scan(&id, &title, &description, &labels, &raw)
+			if err != nil {
+				return err
+			}
+
+			ids = append(ids, strconv.Itoa(id))
+
+			tasks <- Task{
+				ID:          id,
+				Title:       title,
+				Description: description,
+				Labels:      parseLabels(labels),
+			}
+
+		}
+		rows.Close()
+		close(tasks)
+		fmt.Printf("Waiting for workers to finish processing batch %d\n", batchCount)
+		wg.Wait()
+		fmt.Printf("Marking %d issues as processed\n", len(ids))
+		// mark the issues as processed
+		_, err = sqliteDb.Exec(
+			"UPDATE issues SET processed =  1 WHERE id IN (" + strings.Join(ids, ",") + ")",
+		)
+		if err != nil {
+			fmt.Printf("Error marking issues as processed: %v\n", err)
 		}
 
+		err = saveDb()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("batch %d processed\n", batchCount)
 	}
-
-	close(tasks)
-	wg.Wait()
-	count = collection.Count()
-	fmt.Printf("Found %d vectors in collection (after)\n", count)
 
 	return nil
 }

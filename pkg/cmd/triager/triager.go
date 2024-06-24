@@ -72,19 +72,30 @@ func main() {
 			log.Fatal("Error opening issue database: ", err)
 		}
 		defer sqliteDb.Close()
-		err = vectorizer.VectorizeIssues(collection, issueDbFile)
+		err = vectorizer.VectorizeIssues(collection, issueDbFile, func() error {
+			return saveVectors(vectorDbInstance)
+		})
 		if err != nil {
 			log.Fatal("Error vectorizing issues: ", err)
 		}
 
 		fmt.Println("Done updating vectors")
-		err = vectorDbInstance.Export(*vectorDbPath, false, "")
+		err = saveVectors(vectorDbInstance)
 		if err != nil {
 			log.Fatal("Error exporting vectors: ", err)
 		}
 		fmt.Println("Done exporting vectors")
 		os.Exit(0)
 	}
+}
+
+func saveVectors(db *chromem.DB) error {
+	err := db.Export(*vectorDbPath, false, "")
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Saved vectors to %s\n", *vectorDbPath)
+	return nil
 }
 
 func restoreVectors(db *chromem.DB) error {
