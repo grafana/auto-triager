@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
-	"sync"
+	"time"
 
+	"github.com/google/generative-ai-go/genai"
 	"github.com/grafana/auto-triage/pkg/commontypes"
 	"github.com/philippgille/chromem-go"
 
@@ -16,67 +18,47 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const numWorkers = 10
 const batchSize = 100
 
-type Task struct {
-	ID          int
-	Title       string
-	Description string
-	Labels      string
-	// Add other fields as necessary.
-}
-
-type WorkerOps struct {
-	collection *chromem.Collection
-	sqliteDB   *sql.DB
-}
-
-// Worker function to process tasks.
-func worker(id int, tasks <-chan Task, wg *sync.WaitGroup, ops WorkerOps) {
-	ctx := context.Background()
-	defer wg.Done()
-	for task := range tasks {
-		// fmt.Printf("Worker %d processing issue %d\n", id, task.ID)
-
-		content := `
-			  Title: ` + task.Title + `
-			  Description: ` + task.Description + `
-			  Labels: ` + task.Labels + `
-		`
-		// store it inside the collection
-		err := ops.collection.AddDocument(ctx, chromem.Document{
-			ID:      strconv.Itoa(task.ID),
-			Content: content,
-			// Embedding: res.Embedding.Values,
-			Metadata: map[string]string{
-				"idKey":  strconv.Itoa(id),
-				"labels": task.Labels,
-			},
-		})
-
-		fmt.Printf("Got embbedings for issue %d\n", task.ID)
-
-		if err != nil {
-			fmt.Printf("Error storing embedding for issue %d '%s': %v\n", task.ID, task.Title, err)
-			return
-		}
-	}
-	fmt.Printf("Worker %d done\n", id)
+type BatchItem struct {
+	ID        int
+	Content   string
+	Labels    string
+	Embedding []float32
 }
 
 func VectorizeIssues(
-	collection *chromem.Collection,
-	issueDbFile *string,
+	geminiClient *genai.Client,
+	vectorDb *chromem.DB,
+	sqliteDb *sql.DB,
 	saveDb func() error,
 ) error {
-	// open sqlite db
-	sqliteDb, err := sql.Open("sqlite3", *issueDbFile)
+
+	var err error
+
+	ctx := context.Background()
+
+	embbedModel := geminiClient.EmbeddingModel("embedding-001")
+
+	collection, err := vectorDb.GetOrCreateCollection("issues", nil, nil)
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	row := sqliteDb.QueryRow("SELECT count(*) as totalCount FROM issues WHERE processed = 0")
+
+	var totalCount int
+	err = row.Scan(&totalCount)
+	if err != nil {
+		fmt.Printf("Error scanning row: %v\n", err)
 		return err
 	}
 
-	defer sqliteDb.Close()
+	totalBatches := (totalCount + batchSize - 1) / batchSize
+
+	fmt.Printf(":: Total issues to process: %d\n", totalCount)
+	fmt.Printf(":: Will process in batches of %d\n", batchSize)
+	fmt.Printf(":: Total batches: %d\n", totalBatches)
 
 	batchCount := 0
 	for {
@@ -94,17 +76,8 @@ func VectorizeIssues(
 			break
 		}
 
-		tasks := make(chan Task, numWorkers)
-		var wg sync.WaitGroup
-
-		// Start worker goroutines.
-		for i := 1; i <= numWorkers; i++ {
-			wg.Add(1)
-			go worker(i, tasks, &wg, WorkerOps{collection, sqliteDb})
-		}
-
-		fmt.Printf("Found %d issues to process\n", count)
-		fmt.Printf("Batch %d\n", batchCount)
+		fmt.Printf("    -> Found %d issues to process\n", count)
+		fmt.Printf("Batch %d of %d\n", batchCount, totalBatches)
 
 		rows, err := sqliteDb.Query(
 			"SELECT id, title, description, labels, raw FROM issues WHERE processed = 0 ORDER BY id ASC LIMIT ?",
@@ -115,6 +88,10 @@ func VectorizeIssues(
 			fmt.Printf("Error querying issues: %v\n", err)
 			return err
 		}
+
+		batchEmbed := embbedModel.NewBatch()
+
+		batchItems := make([]BatchItem, batchSize)
 
 		count = 0
 		ids := []string{}
@@ -128,22 +105,68 @@ func VectorizeIssues(
 			if err != nil {
 				return err
 			}
+			content := `
+						  Title: ` + title + `
+						  Description: ` + description + `
+						  Labels: ` + parseLabels(labels) + `
+					`
 
+			batchEmbed.AddContentWithTitle(title, genai.Text(content))
 			ids = append(ids, strconv.Itoa(id))
 
-			tasks <- Task{
-				ID:          id,
-				Title:       title,
-				Description: description,
-				Labels:      parseLabels(labels),
+			batchItems[count] = BatchItem{
+				ID:        id,
+				Content:   content,
+				Labels:    labels,
+				Embedding: nil,
 			}
-
+			count++
 		}
 		rows.Close()
-		close(tasks)
-		fmt.Printf("Waiting for workers to finish processing batch %d\n", batchCount)
-		wg.Wait()
-		fmt.Printf("Marking %d issues as processed\n", len(ids))
+
+		fmt.Printf("    -> Embedding batch %d with %d items\n", batchCount, count)
+		embedRes, err := embbedModel.BatchEmbedContents(ctx, batchEmbed)
+		timeSinceLast := time.Now()
+		if err != nil {
+			fmt.Printf("Error embedding batch: %v\n", err)
+			return err
+		}
+
+		fmt.Printf(
+			"    -> Got embbedings for batch %d. Total embbedings %d\n",
+			batchCount,
+			len(embedRes.Embeddings),
+		)
+
+		// google returns embbedings in the same order as the input
+		for i, geminiEmbed := range embedRes.Embeddings {
+			// items[i].Embedding = item.Values
+
+			err = collection.AddDocument(ctx, chromem.Document{
+				ID:        strconv.Itoa(batchItems[i].ID),
+				Content:   batchItems[i].Content,
+				Embedding: geminiEmbed.Values,
+				Metadata: map[string]string{
+					"idKey":  strconv.Itoa(batchItems[i].ID),
+					"labels": batchItems[i].Labels,
+				},
+			})
+
+			if err != nil {
+				fmt.Printf(
+					"Error storing embedding for issue %d : %v\n",
+					batchItems[i].ID,
+					err,
+				)
+				return err
+			}
+		}
+
+		err = saveDb()
+		if err != nil {
+			return err
+		}
+
 		// mark the issues as processed
 		_, err = sqliteDb.Exec(
 			"UPDATE issues SET processed =  1 WHERE id IN (" + strings.Join(ids, ",") + ")",
@@ -152,11 +175,13 @@ func VectorizeIssues(
 			fmt.Printf("Error marking issues as processed: %v\n", err)
 		}
 
-		err = saveDb()
-		if err != nil {
-			return err
+		fmt.Printf("    -> Batch %d of %d processed\n", batchCount, totalBatches)
+		// make sure 1.1 seconds passed since the start of this batch, sleep the rest
+		leftTime := time.Until(timeSinceLast.Add(time.Second * 1))
+		if leftTime > 0 {
+			fmt.Printf("    -> Sleeping for %v\n", leftTime)
+			time.Sleep(leftTime)
 		}
-		fmt.Printf("batch %d processed\n", batchCount)
 	}
 
 	return nil

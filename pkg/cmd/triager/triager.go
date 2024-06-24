@@ -51,15 +51,7 @@ func main() {
 	}
 
 	// init the collection
-	em := geminiClient.EmbeddingModel("embedding-001")
-	embedFunc := func(ctx context.Context, text string) ([]float32, error) {
-		res, err := em.EmbedContent(ctx, genai.Text(text))
-		if err != nil {
-			return nil, err
-		}
-		return res.Embedding.Values, nil
-	}
-	collection, err := vectorDbInstance.GetOrCreateCollection("issues", nil, embedFunc)
+	collection, err := vectorDbInstance.GetOrCreateCollection("issues", nil, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,9 +64,12 @@ func main() {
 			log.Fatal("Error opening issue database: ", err)
 		}
 		defer sqliteDb.Close()
-		err = vectorizer.VectorizeIssues(collection, issueDbFile, func() error {
-			return saveVectors(vectorDbInstance)
-		})
+		err = vectorizer.VectorizeIssues(
+			geminiClient,
+			vectorDbInstance,
+			sqliteDb,
+			func() error { return saveVectors(vectorDbInstance) },
+		)
 		if err != nil {
 			log.Fatal("Error vectorizing issues: ", err)
 		}
