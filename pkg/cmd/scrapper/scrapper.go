@@ -56,7 +56,8 @@ func getStartPage() int {
 	var page int
 	pageFile, err := os.ReadFile(".page.txt")
 	if err != nil {
-		fmt.Printf("Error reading .page.txt: %v\n", err)
+		// fmt.Printf("Error reading .page.txt: %v\n", err)
+		pageFile = []byte("1")
 	}
 	page, err = strconv.Atoi(strings.Trim(string(pageFile), "\n"))
 	if err != nil {
