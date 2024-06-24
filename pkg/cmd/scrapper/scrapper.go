@@ -43,6 +43,7 @@ func createTable(db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS issues (
 			id INTEGER PRIMARY KEY,
 			title TEXT NOT NULL,
+			processed BOOLEAN NOT NULL DEFAULT 0,
 			description TEXT,
 			labels TEXT,
 			raw TEXT NOT NULL
@@ -138,9 +139,9 @@ func saveIssue(db *sql.DB, issue commontypes.Issue) {
 	}
 
 	_, err = db.Exec(`
-		INSERT OR REPLACE INTO issues (id, title, description, labels, raw)
+		INSERT OR REPLACE INTO issues (id, title, description, processed, labels, raw)
 		VALUES (?, ?, ?, ?, ?)
-	`, issue.Number, issue.Title, issue.Description, string(labels), string(issue.Raw))
+	`, issue.Number, issue.Title, issue.Description, 0, string(labels), string(issue.Raw))
 
 	if err != nil {
 		log.Fatalf("failed to insert issue: %v", err)

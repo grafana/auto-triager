@@ -1,3 +1,4 @@
 .page.txt
 bin
 *.sqlite
+vector.db
