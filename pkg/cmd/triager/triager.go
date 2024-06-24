@@ -16,13 +16,13 @@ import (
 )
 
 var geminiKey = os.Getenv("GEMINI_API_KEY")
+var ghKey = os.Getenv("GH_TOKEN")
 
 var (
-	issueDbFile      = flag.String("issuesDb", "github-data.sqlite", "Issue database file")
-	updateVectors    = flag.Bool("updateVectors", false, "Update vectors")
-	vectorDbPath     = flag.String("vectorDb", "vector.db", "Vector database file")
-	issueTitle       = flag.String("issueTitle", "", "Issue Title")
-	issueDescription = flag.String("issueDescription", "", "Issue Description")
+	issueDbFile   = flag.String("issuesDb", "github-data.sqlite", "Issue database file")
+	updateVectors = flag.Bool("updateVectors", false, "Update vectors")
+	vectorDbPath  = flag.String("vectorDb", "vector.db", "Vector database file")
+	issueUrl      = flag.String("issueUrl", "", "Github Issue URL")
 )
 
 func main() {
@@ -123,11 +123,8 @@ func validateFlags() error {
 			return err
 		}
 	}
-	if issueTitle == nil || *issueTitle == "" {
-		return fmt.Errorf("issueTitle is required")
-	}
-	if issueDescription == nil || *issueDescription == "" {
-		return fmt.Errorf("issueDescription is required")
+	if issueUrl == nil {
+		return fmt.Errorf("issueUrl is required")
 	}
 
 	if geminiKey == "" {
