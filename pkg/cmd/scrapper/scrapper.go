@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -33,7 +32,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	startPage := getStartPage()
+	startPage := getStartPage(db)
 	fmt.Printf("Starting from page %d\n", startPage)
 	scrapeIssues(db, startPage)
 }
@@ -49,28 +48,44 @@ func createTable(db *sql.DB) error {
 			raw TEXT NOT NULL
 		)
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// create table page index
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS page_index (
+			page INTEGER PRIMARY KEY,
+			last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func getStartPage() int {
+func getStartPage(db *sql.DB) int {
+	// get last page from page index
 	var page int
-	pageFile, err := os.ReadFile(".page.txt")
+
+	row := db.QueryRow("SELECT page FROM page_index ORDER BY last_updated DESC LIMIT 1")
+	err := row.Scan(&page)
 	if err != nil {
-		// fmt.Printf("Error reading .page.txt: %v\n", err)
-		pageFile = []byte("1")
+		if err == sql.ErrNoRows {
+			// no rows found, start from page 1
+			return 1
+		}
+		log.Fatalf("Error getting last page from page_index: %v", err)
 	}
-	page, err = strconv.Atoi(strings.Trim(string(pageFile), "\n"))
-	if err != nil {
-		fmt.Printf("Error parsing .page.txt: %v\n", err)
-	}
-	fmt.Printf("Starting from page %d\n", page)
+
 	return page
 }
 
-func setStartPage(page int) {
-	err := os.WriteFile(".page.txt", []byte(fmt.Sprintf("%d\n", page)), 0644)
+func setStartPage(page int, db *sql.DB) {
+	_, err := db.Exec("INSERT INTO page_index (page) VALUES (?)", page)
 	if err != nil {
-		fmt.Printf("Error writing .page.txt: %v\n", err)
+		log.Fatalf("Error updating page_index: %v", err)
 	}
 }
 
@@ -115,7 +130,12 @@ func scrapeIssues(db *sql.DB, startPage int) {
 		}
 
 		for _, issue := range issues {
-			issue.Raw = json.RawMessage(body)
+			rawB, err := json.Marshal(issue)
+			if err != nil {
+				log.Fatalf("failed to marshal raw: %v", err)
+				issue.Raw = ""
+			}
+			issue.Raw = string(rawB)
 			if issue.PullRequest.URL != "" {
 				fmt.Println("  - Skipping pull request:", issue.Number)
 				continue
@@ -125,18 +145,24 @@ func scrapeIssues(db *sql.DB, startPage int) {
 			saveIssue(db, issue)
 		}
 
-		//set timeout between 1 to 5 random
+		//set timeout between 1 to 3 random
 		timeout = rand.Intn(3) + 1
-		setStartPage(page + 1)
+		setStartPage(page+1, db)
 		fmt.Println("Sleeping for", timeout, "seconds...")
 		time.Sleep(time.Duration(timeout) * time.Second)
 	}
 }
 
 func saveIssue(db *sql.DB, issue commontypes.Issue) {
-	labels, err := json.Marshal(issue.Labels)
-	if err != nil {
-		log.Fatalf("failed to marshal labels: %v", err)
+	labels := labelsToJSONArray(issue.Labels)
+
+	// check if issue already exists in db
+	row := db.QueryRow(`SELECT id FROM issues WHERE id = ?`, issue.Number)
+	var id int
+	err := row.Scan(&id)
+	if err == nil {
+		fmt.Println("     -> Issue already exists in db")
+		// return
 	}
 
 	_, err = db.Exec(`
@@ -147,4 +173,14 @@ func saveIssue(db *sql.DB, issue commontypes.Issue) {
 	if err != nil {
 		log.Fatalf("failed to insert issue: %v", err)
 	}
+
+	fmt.Println("     -> Inserted issue into db")
+}
+
+func labelsToJSONArray(labels []commontypes.Label) string {
+	var jsonArray []string
+	for _, label := range labels {
+		jsonArray = append(jsonArray, fmt.Sprintf(`"%s"`, label.Name))
+	}
+	return fmt.Sprintf("[%s]", strings.Join(jsonArray, ","))
 }

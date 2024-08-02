@@ -1,7 +1,6 @@
 package commontypes
 
 import (
-	"encoding/json"
 	"time"
 )
 
@@ -11,7 +10,7 @@ type Issue struct {
 	Description string      `json:"body"`
 	PullRequest PullRequest `json:"pull_request"`
 	Labels      []Label     `json:"labels"`
-	Raw         json.RawMessage
+	Raw         string
 }
 
 type PullRequest struct {
