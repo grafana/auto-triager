@@ -47,7 +47,7 @@ var (
 )
 
 var availableCommands = []string{"gen-dataset"}
-var maxTokens = 100000
+var maxTokens = 300000
 
 func main() {
 	var err error
@@ -163,8 +163,9 @@ func generateDataset(db *sql.DB) error {
 			return err
 		}
 		prompt.Messages = append(prompt.Messages, PromptMessage{Role: "user", Content: `
-			Issue title\n\n ` + title + `
-			Issue description\n\n ` + description + `
+			Issue ID: ` + strconv.Itoa(id) + `
+			Issue title: ` + title + `
+			Issue description:\n\n ` + description + `
 		`})
 
 		areaLabels, typeLabels, err := getLabelsFromIssueLabels(labels)
@@ -173,7 +174,7 @@ func generateDataset(db *sql.DB) error {
 		}
 
 		// do not use examples without labels
-		if len(areaLabels) == 0 && len(typeLabels) == 0 {
+		if len(areaLabels) == 0 || len(typeLabels) == 0 {
 			continue
 		}
 
@@ -190,7 +191,7 @@ func generateDataset(db *sql.DB) error {
 		prompt.Messages = append(
 			prompt.Messages,
 			PromptMessage{
-				Role: "system",
+				Role: "assistant",
 				// without line breaks or spaces
 				Content: jsonResponse,
 			},
@@ -220,13 +221,16 @@ func generateDataset(db *sql.DB) error {
 	fmt.Printf("Total tokens: %d\n", totalTokens)
 	fmt.Printf("Total issues: %d\n", totalIssues)
 
-	finalPromptsJson, err := json.Marshal(finalPrompts)
-	if err != nil {
-		return err
+	var finalContent string = ""
+	for _, prompt := range finalPrompts {
+		contente, err := json.Marshal(prompt)
+		if err != nil {
+			return err
+		}
+		finalContent += string(contente) + "\n"
 	}
 
-	//write to out file
-	err = os.WriteFile(*outFile, finalPromptsJson, 0644)
+	err = os.WriteFile(*outFile, []byte(finalContent), 0644)
 	if err != nil {
 		return err
 	}

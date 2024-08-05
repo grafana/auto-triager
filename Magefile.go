@@ -127,7 +127,7 @@ func (Run) FineTuner(ctx context.Context, cmd string) error {
 		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/fine-tuner",
 		"-issuesDb=github-data.sqlite",
 		"-idsFile=fixtures/fineTuneIds.txt",
-		"-outFile=./out/fine-tune-dataset.json",
+		"-outFile=./out/fine-tune-dataset.jsonl",
 		cmd,
 	}
 
