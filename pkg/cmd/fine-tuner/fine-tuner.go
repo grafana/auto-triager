@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"database/sql"
 	"encoding/json"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -46,7 +45,6 @@ var (
 	outFile = flag.String("outFile", "fine-tune-dataset.json", "Output file")
 )
 
-var availableCommands = []string{"gen-dataset"}
 var maxTokens = 300000
 
 func main() {
@@ -66,20 +64,10 @@ func main() {
 	}
 	defer db.Close()
 
-	command, err := getCommand()
+	err = generateDataset(db)
 	if err != nil {
-		fmt.Printf("Error getting command: %v\n", err)
+		fmt.Printf("Error generating dataset: %v\n", err)
 		os.Exit(1)
-	}
-
-	fmt.Printf("Command: %s\n", command)
-
-	if command == "gen-dataset" {
-		err = generateDataset(db)
-		if err != nil {
-			fmt.Printf("Error generating dataset: %v\n", err)
-			os.Exit(1)
-		}
 	}
 }
 
@@ -278,19 +266,6 @@ func readFileLines(s string) ([]string, error) {
 	}
 	return lines, nil
 
-}
-
-func getCommand() (string, error) {
-	args := flag.Args()
-	if len(args) == 0 {
-		return "", fmt.Errorf("command is required")
-	}
-
-	if !slices.Contains(availableCommands, args[0]) {
-		return "", fmt.Errorf("invalid command %s", args[0])
-	}
-
-	return args[0], nil
 }
 
 func validateFlags() error {
