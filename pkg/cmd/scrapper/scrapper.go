@@ -21,6 +21,8 @@ var (
 	apiURL     = "https://api.github.com/repos/grafana/grafana/issues"
 )
 
+var lastRquestTime time.Time = time.Now()
+
 func main() {
 	db, err := sql.Open("sqlite3", dbFileName)
 	if err != nil {
@@ -90,7 +92,6 @@ func setStartPage(page int, db *sql.DB) {
 }
 
 func scrapeIssues(db *sql.DB, startPage int) {
-	var timeout int
 	for page := startPage; ; page++ {
 		fmt.Printf("Fetching page %d...\n", page)
 		apiWithPage := fmt.Sprintf(
@@ -102,6 +103,7 @@ func scrapeIssues(db *sql.DB, startPage int) {
 		if err != nil {
 			log.Fatalf("failed to create request: %v", err)
 		}
+		lastRquestTime = time.Now()
 
 		req.Header.Set("Authorization", "token "+os.Getenv("GH_TOKEN"))
 
@@ -146,10 +148,8 @@ func scrapeIssues(db *sql.DB, startPage int) {
 		}
 
 		//set timeout between 1 to 3 random
-		timeout = rand.Intn(3) + 1
 		setStartPage(page+1, db)
-		fmt.Println("Sleeping for", timeout, "seconds...")
-		time.Sleep(time.Duration(timeout) * time.Second)
+		waitForNextRequest()
 	}
 }
 
@@ -183,4 +183,12 @@ func labelsToJSONArray(labels []commontypes.Label) string {
 		jsonArray = append(jsonArray, fmt.Sprintf(`"%s"`, label.Name))
 	}
 	return fmt.Sprintf("[%s]", strings.Join(jsonArray, ","))
+}
+
+func waitForNextRequest() {
+	//random timeout between 1 to 3 seconds
+	timeout := rand.Intn(3) + 1
+	wait := time.Until(lastRquestTime.Add(time.Second * time.Duration(timeout)))
+	fmt.Println("Sleeping for", wait)
+	time.Sleep(wait)
 }

@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/grafana/auto-triage/pkg/cmd/github"
-	"github.com/grafana/auto-triage/pkg/cmd/historian"
-	"github.com/grafana/auto-triage/pkg/cmd/vectorizer"
+	"github.com/grafana/auto-triage/pkg/github"
+	"github.com/grafana/auto-triage/pkg/historian"
+	"github.com/grafana/auto-triage/pkg/vectorizer"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/philippgille/chromem-go"
 	"google.golang.org/api/option"

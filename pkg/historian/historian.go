@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/grafana/auto-triage/pkg/cmd/github"
+	"github.com/grafana/auto-triage/pkg/github"
 	"github.com/philippgille/chromem-go"
 )
 

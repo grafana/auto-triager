@@ -117,3 +117,19 @@ func (Run) Triager(ctx context.Context, id string) error {
 
 	return sh.RunV(command[0], command[1:]...)
 }
+
+func (Run) FineTuner(ctx context.Context, cmd string) error {
+	mg.Deps(func() error {
+		return buildCommand("fine-tuner", runtime.GOOS+"_"+runtime.GOARCH)
+	})
+
+	command := []string{
+		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/fine-tuner",
+		"-issuesDb=github-data.sqlite",
+		"-idsFile=fixtures/fineTuneIds.txt",
+		"-outFile=./out/fine-tune-dataset.json",
+		cmd,
+	}
+
+	return sh.RunV(command[0], command[1:]...)
+}
