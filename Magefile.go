@@ -133,3 +133,16 @@ func (Run) FineTuner(ctx context.Context, cmd string) error {
 
 	return sh.RunV(command[0], command[1:]...)
 }
+
+func (Run) TriagerFineTuned(ctx context.Context, id string) error {
+	mg.Deps(func() error {
+		return buildCommand("triager-fine-tuned", runtime.GOOS+"_"+runtime.GOARCH)
+	})
+
+	command := []string{
+		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager-fine-tuned",
+		"-issueId=" + id,
+	}
+
+	return sh.RunV(command[0], command[1:]...)
+}
