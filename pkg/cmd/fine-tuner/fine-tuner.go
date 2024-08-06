@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/grafana/auto-triage/pkg/github"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/tiktoken-go/tokenizer"
 
 	"flag"
 	"fmt"
@@ -25,11 +26,21 @@ type PromptTemplate struct {
 }
 
 var (
-	issueDbFile = flag.String("issuesDb", "github-data.sqlite", "Issue database file")
-	idsFile     = flag.String(
-		"idsFile",
+	issueDbFile        = flag.String("issuesDb", "github-data.sqlite", "Issue database file")
+	categorizedIdsFile = flag.String(
+		"categorizedIdsFile",
 		"",
 		"File containing the ids of the issues to process. One per line",
+	)
+	categorizableIdsFile = flag.String(
+		"categorizableIdsFile",
+		"",
+		"File containing the ids of the issues that are consideredd categorizable. One per line",
+	)
+	missingInfoIdsFile = flag.String(
+		"missingInfoIdsFile",
+		"",
+		"File containing the ids of the issues that are missing information. One per line",
 	)
 	openAiKey  = os.Getenv("OPENAI_API_KEY")
 	labelsFile = flag.String(
@@ -64,207 +75,36 @@ func main() {
 	}
 	defer db.Close()
 
-	err = generateDataset(db)
-	if err != nil {
-		fmt.Printf("Error generating dataset: %v\n", err)
-		os.Exit(1)
-	}
-}
+	cmd := flag.Arg(0)
+	fmt.Printf("Command: %s\n", cmd)
 
-func generateDataset(db *sql.DB) error {
-
-	enc, err := tokenizer.Get(tokenizer.Cl100kBase)
-	if err != nil {
-		return err
-	}
-
-	labels, err := readFileLines(*labelsFile)
-	if err != nil {
-		return err
-	}
-
-	types, err := readFileLines(*typesFile)
-	if err != nil {
-		return err
-	}
-
-	var systemPrompt = PromptMessage{
-		Role: "system",
-		Content: `
-			You are an expert Grafana issues categorizer. 
-			You are provided with a Grafana issue. 
-			You will categorize the issue into one of the provided list of types and areas. 
-
-			It is possible that there are multiple areas and types for a given issue or none at all. 
-			In that case you should return an empty array for the specific field.
-
-			The output should be a valid json object with the following fields: 
-			* id: The id of the current issue 
-			* areaLabel: The area label of the current issue 
-			* typeLabel: The type of the current issue 
-
-			### Start of list of types
-			` + strings.Join(types, "\n") +
-			`
-			### End of list of types
-
-			
-			### Start of list of areas
-			This is the list of areas:
-			` + strings.Join(labels, "\n") +
-			`
-			### End of list of areas
-			`,
-	}
-
-	ids, err := readFileLines(*idsFile)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Generating dataset with %d ids\n", len(ids))
-
-	sql := `
-		SELECT id, title, description, labels FROM issues WHERE processed = 0 AND id IN (` + strings.Join(ids, ",") + `)
-	`
-	fmt.Printf("SQL: %s\n", sql)
-
-	rows, err := db.Query(sql)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var finalPrompts []PromptTemplate
-	var totalTokens int
-	var totalIssues = 0
-
-	for rows.Next() {
-		var prompt PromptTemplate
-		prompt.Messages = append(prompt.Messages, systemPrompt)
-		var id int
-		var title string
-		var description string
-		var labels string
-		err = rows.Scan(&id, &title, &description, &labels)
-		if err != nil {
-			return err
-		}
-		prompt.Messages = append(prompt.Messages, PromptMessage{Role: "user", Content: `
-			Issue ID: ` + strconv.Itoa(id) + `
-			Issue title: ` + title + `
-			Issue description:\n\n ` + description + `
-		`})
-
-		areaLabels, typeLabels, err := getLabelsFromIssueLabels(labels)
-		if err != nil {
-			continue
-		}
-
-		// do not use examples without labels
-		if len(areaLabels) == 0 || len(typeLabels) == 0 {
-			continue
-		}
-
-		jsonResponse := `{
-			"id": ` + strconv.Itoa(id) + `,
-			"areaLabel": [` + strings.Join(areaLabels, ",") + `],
-			"typeLabel": [` + strings.Join(typeLabels, ",") + `]
-		}`
-
-		jsonResponse = strings.ReplaceAll(jsonResponse, "\n", "")
-		jsonResponse = strings.ReplaceAll(jsonResponse, "\t", "")
-		jsonResponse = strings.ReplaceAll(jsonResponse, " ", "")
-
-		prompt.Messages = append(
-			prompt.Messages,
-			PromptMessage{
-				Role: "assistant",
-				// without line breaks or spaces
-				Content: jsonResponse,
-			},
+	if cmd == "categorizer" {
+		err = generateCategorizerDataset(
+			db,
+			*labelsFile,
+			*typesFile,
+			*categorizedIdsFile,
+			*outFile,
 		)
-
-		promptJson, err := json.Marshal(prompt)
 		if err != nil {
-			continue
+			fmt.Printf("Error generating categorizer dataset: %v\n", err)
+			os.Exit(1)
 		}
+		os.Exit(0)
+	}
 
-		tokens, _, err := enc.Encode(string(promptJson))
+	if cmd == "qualitizer" {
+		err = generateQualitizerDataset(db, *categorizableIdsFile, *missingInfoIdsFile, *outFile)
 		if err != nil {
-			continue
+			fmt.Printf("Error generating qualitizer dataset: %v\n", err)
+			os.Exit(1)
 		}
-
-		if (totalTokens + len(tokens)) > maxTokens {
-			fmt.Printf("Reached max tokens. Stopping\n")
-			break
-		}
-		totalIssues++
-		totalTokens += len(tokens)
-		fmt.Printf("Total tokens so far: %d\n", totalTokens)
-
-		finalPrompts = append(finalPrompts, prompt)
+		os.Exit(0)
 	}
 
-	fmt.Printf("Total tokens: %d\n", totalTokens)
-	fmt.Printf("Total issues: %d\n", totalIssues)
-
-	var finalContent string = ""
-	for _, prompt := range finalPrompts {
-		contente, err := json.Marshal(prompt)
-		if err != nil {
-			return err
-		}
-		finalContent += string(contente) + "\n"
-	}
-
-	err = os.WriteFile(*outFile, []byte(finalContent), 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func getLabelsFromIssueLabels(labels string) ([]string, []string, error) {
-	var areaLabels []string
-	var typeLabels []string
-
-	//labels if not empty is a json array
-	if labels != "" {
-		var parsedLabels []string
-		err := json.Unmarshal([]byte(labels), &parsedLabels)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		for _, label := range parsedLabels {
-			if strings.HasPrefix(label, "area/") {
-				areaLabels = append(areaLabels, fmt.Sprintf(`"%s"`, label))
-			} else if strings.HasPrefix(label, "type/") {
-				typeLabels = append(typeLabels, fmt.Sprintf(`"%s"`, label))
-			}
-		}
-	}
-
-	return areaLabels, typeLabels, nil
-
-}
-
-func readFileLines(s string) ([]string, error) {
-	file, err := os.Open(s)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var lines []string
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	return lines, nil
+	// in red
+	fmt.Printf("Unknown command: %s\n", cmd)
+	os.Exit(1)
 
 }
 
@@ -284,17 +124,16 @@ func validateFlags() error {
 		return fmt.Errorf("OPENAI_API_KEY env var is required")
 	}
 
-	if *idsFile == "" {
-		return fmt.Errorf("idsFile is required")
-	}
+	return nil
+}
 
-	_, err = os.Stat(*idsFile)
+func validateFile(file string) error {
+	_, err := os.Stat(file)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("idsFile %s does not exist", *idsFile)
+		return fmt.Errorf("%s does not exist", file)
 	} else if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -305,4 +144,86 @@ func getDb() (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func readFileLines(s string) ([]string, error) {
+	file, err := os.Open(s)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, nil
+
+}
+
+func guaranteeIssuesInDb(db *sql.DB, issueIds []string) {
+	var lastRequestTime time.Time = time.Now()
+	var requestInterval = time.Second * 1
+	didRequest := false
+	for _, issueId := range issueIds {
+		sleepTime := time.Until(lastRequestTime.Add(requestInterval))
+		if sleepTime > 0 && didRequest {
+			fmt.Printf("     -> Sleeping for %v\n", sleepTime)
+			time.Sleep(sleepTime)
+		}
+		lastRequestTime = time.Now()
+		didRequest = guaranteeIssueInDb(db, issueId)
+	}
+}
+
+func guaranteeIssueInDb(db *sql.DB, issueId string) bool {
+	didRequest := false
+	row := db.QueryRow(`SELECT id FROM issues WHERE id = ?`, issueId)
+	var id int
+	err := row.Scan(&id)
+	if err == nil {
+		fmt.Println("     -> Issue already exists in db")
+		return didRequest
+	}
+
+	fmt.Printf("     -> Issue %s not found in db. Fetching from github\n", issueId)
+
+	issueIdInt, err := strconv.Atoi(issueId)
+	if err != nil {
+		return didRequest
+	}
+	didRequest = true
+	issue, err := github.FetchIssueDetails(issueIdInt)
+	if err != nil {
+		return didRequest
+	}
+
+	labels := []string{}
+
+	for _, label := range issue.Labels {
+		labels = append(labels, label.Name)
+	}
+
+	labelString := fmt.Sprintf("[%s]", strings.Join(labels, ","))
+	issueRaw, err := json.Marshal(issue)
+	if err != nil {
+		return didRequest
+	}
+
+	fmt.Printf("     -> Got issue %s with title: %s\n", issueId, issue.Title)
+
+	_, err = db.Exec(`
+		INSERT OR REPLACE INTO issues (id, title, description, processed, labels, raw)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, issueId, issue.Title, issue.Body, 0, labelString, string(issueRaw))
+
+	if err != nil {
+		return didRequest
+	}
+
+	fmt.Println("     -> Inserted issue into db")
+
+	return didRequest
 }

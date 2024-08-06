@@ -123,11 +123,15 @@ func (Run) FineTuner(ctx context.Context, cmd string) error {
 		return buildCommand("fine-tuner", runtime.GOOS+"_"+runtime.GOARCH)
 	})
 
+	outFile := fmt.Sprintf("./out/fine-tune-dataset-%s.jsonl", cmd)
+
 	command := []string{
 		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/fine-tuner",
 		"-issuesDb=github-data.sqlite",
-		"-idsFile=fixtures/fineTuneIds.txt",
-		"-outFile=./out/fine-tune-dataset.jsonl",
+		"-categorizedIdsFile=fixtures/fineTuneIds.txt",
+		"-missingInfoIdsFile=fixtures/missingInfoIds.txt",
+		"-categorizableIdsFile=fixtures/categorizableIds.txt",
+		fmt.Sprintf("-outFile=%s", outFile),
 		cmd,
 	}
 

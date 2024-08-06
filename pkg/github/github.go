@@ -12,6 +12,7 @@ type Issue struct {
 	URL                   string     `json:"url"`
 	RepositoryURL         string     `json:"repository_url"`
 	LabelsURL             string     `json:"labels_url"`
+	Labels                []Label    `json:"labels"`
 	CommentsURL           string     `json:"comments_url"`
 	EventsURL             string     `json:"events_url"`
 	HTMLURL               string     `json:"html_url"`
@@ -35,6 +36,13 @@ type Issue struct {
 	TimelineURL           string     `json:"timeline_url"`
 	PerformedViaGithubApp *string    `json:"performed_via_github_app"`
 	StateReason           *string    `json:"state_reason"`
+}
+
+type Label struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+	Url   string `json:"url"`
 }
 
 type User struct {
