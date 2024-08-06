@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/grafana/auto-triage/pkg/prompts"
 	"github.com/tiktoken-go/tokenizer"
 )
 
@@ -41,18 +42,7 @@ func generateCategorizerDataset(
 
 	var categorizerSystemPrompt = PromptMessage{
 		Role: "system",
-		Content: `
-			You are an expert Grafana issues categorizer. 
-			You are provided with a Grafana issue. 
-			You will categorize the issue into one of the provided list of types and areas. 
-
-			It is possible that there are multiple areas and types for a given issue or none at all. 
-			In that case you should return an empty array for the specific field.
-
-			The output should be a valid json object with the following fields: 
-			* id: The id of the current issue 
-			* areaLabel: The area label of the current issue 
-			* typeLabel: The type of the current issue 
+		Content: prompts.CategorySystemPrompt + `
 
 			### Start of list of types
 			` + strings.Join(types, "\n") +

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -11,17 +12,30 @@ import (
 	"strings"
 
 	"github.com/grafana/auto-triage/pkg/github"
+	"github.com/grafana/auto-triage/pkg/prompts"
 	"github.com/sashabaranov/go-openai"
 )
 
+type QualityVeredict struct {
+	IsCategorizable bool            `json:"isCategorizable"`
+	ID              json.RawMessage `json:"id"`
+	Remarks         string          `json:"remarks"`
+}
+
 var (
-	openAiKey = os.Getenv("OPENAI_API_KEY")
-	ghToken   = os.Getenv("GH_TOKEN")
-	issueId   = flag.Int("issueId", 0, "Github Issue ID (only the number)")
-	model     = flag.String(
-		"model",
+	openAiKey        = os.Getenv("OPENAI_API_KEY")
+	ghToken          = os.Getenv("GH_TOKEN")
+	issueId          = flag.Int("issueId", 0, "Github Issue ID (only the number)")
+	categorizerModel = flag.String(
+		"categorizerModel",
 		// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:auto-triage:9ssSMoCP", // 800k training tokens
 		"ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:auto-triage:9ss5MNR0", // 400k training tokens
+		"Model to use",
+	)
+	qualitizerModel = flag.String(
+		"qualitizerModel",
+		// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tDkW7Kq", // first training
+		"gpt-4o",
 		"Model to use",
 	)
 	labelsFile = flag.String(
@@ -45,6 +59,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	areaLabels, err := readFileLines(*labelsFile)
+	if err != nil {
+		log.Fatal("Error reading areaLabels.txt: ", err)
+	}
+
+	typeLabels, err := readFileLines(*typesFile)
+	if err != nil {
+		log.Fatal("Error reading typeLabels.txt: ", err)
+	}
+
 	issueData, err := github.FetchIssueDetails(*issueId)
 	if err != nil {
 		log.Fatal("Error fetching issue details: ", err)
@@ -57,70 +81,29 @@ func main() {
 
 	fmt.Printf(":: Got issue %d with title: %s\n", *issueId, issueData.Title)
 
-	areaLabels, err := readFileLines(*labelsFile)
-	if err != nil {
-		log.Fatal("Error reading areaLabels.txt: ", err)
-	}
+	fmt.Printf(":: Checking if issue can be categorized\n")
 
-	typeLabels, err := readFileLines(*typesFile)
-	if err != nil {
-		log.Fatal("Error reading typeLabels.txt: ", err)
-	}
-
-	var systemPrompt = `
-			You are an expert Grafana issues categorizer. 
-			You are provided with a Grafana issue. 
-			You will categorize the issue into one of the provided list of types and areas. 
-
-			It is possible that there are multiple areas and types for a given issue or none at all. 
-			In that case you should return an empty array for the specific field.
-
-			The output should be a valid json object with the following fields: 
-			* id: The id of the current issue 
-			* areaLabel: The area label of the current issue 
-			* typeLabel: The type of the current issue 
-
-			### Start of list of types
-			` + strings.Join(typeLabels, "\n") +
-		`
-			### End of list of types
-
-			
-			### Start of list of areas
-			This is the list of areas:
-			` + strings.Join(areaLabels, "\n") +
-		`
-			### End of list of areas
-			`
-
-	client := openai.NewClient(openAiKey)
-	resp, err := client.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model: *model,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: systemPrompt,
-				},
-				{
-					Role: openai.ChatMessageRoleUser,
-					Content: `
-					  Issue ID: ` + strconv.Itoa(*issueId) + `
-					  Issue title: ` + issueData.Title + `
-					  Issue description:\n\n ` + issueData.Body + `
-					`,
-				},
-			},
-		},
-	)
+	qualityVeredict, err := getIssueIsCategorizable(&issueData, qualitizerModel)
 
 	if err != nil {
-		fmt.Printf("ChatCompletion error: %v\n", err)
+		log.Fatal("Error judging issue quality: ", err)
 		os.Exit(1)
 	}
 
-	fmt.Println(resp.Choices[0].Message.Content)
+	fmt.Printf("Is categorizable: %s\n", strconv.FormatBool(qualityVeredict.IsCategorizable))
+
+	if !qualityVeredict.IsCategorizable {
+		os.Exit(0)
+	}
+
+	fmt.Printf(":: Categorizing issue\n")
+
+	category, err := getIssueCategory(&issueData, categorizerModel, typeLabels, areaLabels)
+	if err != nil {
+		log.Fatal("Error categorizing issue: ", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Category: %s\n", category)
 
 }
 
@@ -154,5 +137,104 @@ func readFileLines(s string) ([]string, error) {
 		lines = append(lines, scanner.Text())
 	}
 	return lines, nil
+
+}
+
+func getIssueCategory(
+	issueData *github.Issue,
+	model *string,
+	typeLabels []string,
+	areaLabels []string,
+) (string, error) {
+	var categoryzerPrompt = prompts.CategorySystemPrompt + `
+
+			### Start of list of types
+			` + strings.Join(typeLabels, "\n") +
+		`
+			### End of list of types
+
+			
+			### Start of list of areas
+			This is the list of areas:
+			` + strings.Join(areaLabels, "\n") +
+		`
+			### End of list of areas
+			`
+
+	client := openai.NewClient(openAiKey)
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Model: *model,
+			ResponseFormat: &openai.ChatCompletionResponseFormat{
+				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
+			},
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: categoryzerPrompt,
+				},
+				{
+					Role: openai.ChatMessageRoleUser,
+					Content: `
+					  Issue ID: ` + strconv.Itoa(*issueId) + `
+					  Issue title: ` + issueData.Title + `
+					  Issue description:\n\n ` + issueData.Body + `
+					`,
+				},
+			},
+		},
+	)
+
+	if err != nil {
+		fmt.Printf("ChatCompletion error: %v\n", err)
+		return "", err
+	}
+
+	fmt.Println(resp.Choices[0].Message.Content)
+
+	return resp.Choices[0].Message.Content, nil
+}
+
+func getIssueIsCategorizable(issueData *github.Issue, model *string) (QualityVeredict, error) {
+	client := openai.NewClient(openAiKey)
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Model: *model,
+			ResponseFormat: &openai.ChatCompletionResponseFormat{
+				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
+			},
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: prompts.QualitySystemPrompt,
+				},
+				{
+					Role: openai.ChatMessageRoleUser,
+					Content: `
+					  Issue ID: ` + strconv.Itoa(issueData.Number) + `
+					  Issue title: ` + issueData.Title + `
+					  Issue description:\n\n ` + issueData.Body + `
+					`,
+				},
+			},
+		},
+	)
+
+	if err != nil {
+		fmt.Printf("ChatCompletion error: %v\n", err)
+		return QualityVeredict{}, err
+	}
+
+	fmt.Println(resp.Choices[0].Message.Content)
+
+	veredict := QualityVeredict{}
+	err = json.Unmarshal([]byte(resp.Choices[0].Message.Content), &veredict)
+	if err != nil {
+		return QualityVeredict{}, err
+	}
+
+	return veredict, nil
 
 }

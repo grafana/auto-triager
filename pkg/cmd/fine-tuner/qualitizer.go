@@ -8,22 +8,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/grafana/auto-triage/pkg/prompts"
 	"github.com/tiktoken-go/tokenizer"
 )
 
 var qualitizerSystemPrompt = PromptMessage{
-	Role: "system",
-	Content: `
-			You are an expert Grafana issue quality checker.
-			You are provided with a Grafana issue. 
-			You will determine if the issue is categorizable or information is missing.
-
-      It is only possible that the issue is categorizable or information is missing.
-
-			The output should be a valid json object with the following fields: 
-			* id: The id of the current issue 
-			* isCategorizable: true if the issue is categorizable, false if information is missing
-			`,
+	Role:    "system",
+	Content: prompts.QualitySystemPrompt,
 }
 
 func generateQualitizerDataset(
