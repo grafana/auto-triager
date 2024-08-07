@@ -43,8 +43,9 @@ var (
 	qualitizerModel = flag.String(
 		"qualitizerModel",
 		// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tDkW7Kq", // first training. Bad model
-		// "gpt-4o", // regular model from openai
-		"ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tW2EBhH", // good. trained with a larger dataset but doesn't produce remarks
+		// "gpt-4o", // regular model from openai, produces remarks but it not fine tuned
+		// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tW2EBhH", // good. trained with a larger dataset but doesn't produce remarks
+		"ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tWTKBHh", // good. trained with a larger dataset. might produce remarks but most of the time it doesn't
 		"Model to use",
 	)
 	labelsFile = flag.String(

@@ -173,6 +173,8 @@ func main() {
 		},
 	}
 
+	fmt.Printf("Generating response from Gemini. Sending %d characters\n", len(prompt))
+
 	resp, err := genModel.GenerateContent(context.Background(), genai.Text(prompt))
 	if err != nil {
 		log.Fatal(err)
