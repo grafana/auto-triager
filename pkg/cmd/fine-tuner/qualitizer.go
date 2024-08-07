@@ -29,12 +29,12 @@ func generateQualitizerDataset(
 		return err
 	}
 
-	categorizableIds, err := readFileLines(categorizableIdsFile)
+	categorizableIds, err := readFileLines(categorizableIdsFile, 100)
 	if err != nil {
 		return err
 	}
 
-	missingInfoIds, err := readFileLines(missingInfoIdsFile)
+	missingInfoIds, err := readFileLines(missingInfoIdsFile, 100)
 	if err != nil {
 		return err
 	}

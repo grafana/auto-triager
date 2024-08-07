@@ -25,12 +25,12 @@ func generateCategorizerDataset(
 		return err
 	}
 
-	labels, err := readFileLines(labelsFile)
+	labels, err := readFileLines(labelsFile, 0)
 	if err != nil {
 		return err
 	}
 
-	types, err := readFileLines(typesFile)
+	types, err := readFileLines(typesFile, 0)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func generateCategorizerDataset(
 			`,
 	}
 
-	ids, err := readFileLines(idsFile)
+	ids, err := readFileLines(idsFile, 0)
 	if err != nil {
 		return err
 	}

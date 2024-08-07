@@ -146,7 +146,8 @@ func getDb() (*sql.DB, error) {
 	return db, nil
 }
 
-func readFileLines(s string) ([]string, error) {
+func readFileLines(s string, limit int) ([]string, error) {
+	totalLines := 0
 	file, err := os.Open(s)
 	if err != nil {
 		return nil, err
@@ -158,6 +159,10 @@ func readFileLines(s string) ([]string, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
+		totalLines++
+		if limit > 0 && totalLines >= limit {
+			break
+		}
 	}
 	return lines, nil
 
