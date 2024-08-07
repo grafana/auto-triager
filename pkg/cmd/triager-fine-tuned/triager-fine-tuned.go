@@ -17,9 +17,17 @@ import (
 )
 
 type QualityVeredict struct {
-	IsCategorizable bool            `json:"isCategorizable"`
-	ID              json.RawMessage `json:"id"`
-	Remarks         string          `json:"remarks"`
+	IsCategorizable bool        `json:"isCategorizable"`
+	ID              interface{} `json:"id"`
+	Remarks         string      `json:"remarks"`
+}
+
+type CategorizedIssue struct {
+	ID              interface{} `json:"id"`
+	AreaLabel       []string    `json:"areaLabel"`
+	TypeLabel       []string    `json:"typeLabel"`
+	IsCategorizable bool        `json:"isCategorizable"`
+	Remarks         string      `json:"remarks"`
 }
 
 var (
@@ -92,10 +100,6 @@ func main() {
 
 	fmt.Printf("Is categorizable: %s\n", strconv.FormatBool(qualityVeredict.IsCategorizable))
 
-	if !qualityVeredict.IsCategorizable {
-		os.Exit(0)
-	}
-
 	fmt.Printf(":: Categorizing issue\n")
 
 	category, err := getIssueCategory(&issueData, categorizerModel, typeLabels, areaLabels)
@@ -103,7 +107,8 @@ func main() {
 		log.Fatal("Error categorizing issue: ", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Category: %s\n", category)
+
+	fmt.Printf("Categorizaion: %v\n", category)
 
 }
 
@@ -145,7 +150,7 @@ func getIssueCategory(
 	model *string,
 	typeLabels []string,
 	areaLabels []string,
-) (string, error) {
+) (CategorizedIssue, error) {
 	var categoryzerPrompt = prompts.CategorySystemPrompt + `
 
 			### Start of list of types
@@ -188,12 +193,17 @@ func getIssueCategory(
 
 	if err != nil {
 		fmt.Printf("ChatCompletion error: %v\n", err)
-		return "", err
+		return CategorizedIssue{}, err
 	}
 
-	fmt.Println(resp.Choices[0].Message.Content)
+	category := CategorizedIssue{}
+	err = json.Unmarshal([]byte(resp.Choices[0].Message.Content), &category)
+	if err != nil {
+		return CategorizedIssue{}, err
+	}
 
-	return resp.Choices[0].Message.Content, nil
+	return category, nil
+
 }
 
 func getIssueIsCategorizable(issueData *github.Issue, model *string) (QualityVeredict, error) {
