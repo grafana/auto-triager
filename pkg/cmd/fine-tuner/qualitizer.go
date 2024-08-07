@@ -126,6 +126,7 @@ func generatePrompts(
 		jsonResponse := `{
             "id": ` + strconv.Itoa(id) + `,
             "isCategorizable":  ` + strconv.FormatBool(isCategorizable) + `
+            "remarks": ""
         }`
 
 		jsonResponse = strings.ReplaceAll(jsonResponse, "\n", "")

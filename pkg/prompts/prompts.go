@@ -20,7 +20,9 @@ A plugin error should include the plugin name, error message and versions.
 The output should be a valid json object with the following fields:
 * id (string): The id of the current issue
 * isCategorizable (boolean): true if the issue is categorizable, false if information is missing
-* remarks (string): Any additional remarks you want to add about the issue
+* remarks (string): Any additional remarks you want to add about the issue. 
+
+You MUST provide a reason for why the issue is categorizable or not in the remarks field.
 			`
 
 var CategorySystemPrompt = `

@@ -1,8 +1,12 @@
-# Auto Grafana issue triager with Gemini
+# Auto Grafana issue triager with Gemini and OpenAI (fine tuned models)
 
 This is a (rather naive) attempt to create an auto triage system for Grafana issues.
 
 ## How does it work?
+
+There are two different implementations of the auto triager, one using Gemini with RAG and one using OpenAI fine tuned models.
+
+### Gemini with RAG
 
 The auto-triager uses retrieval-augmented generation (RAG) to generate a long list of historic data
 that is later sent to the remote model for analysis.
@@ -16,23 +20,76 @@ These are the steps that follows:
 - Sends the prompt to the model
 - Returns the model's classification JSON output
 
-## How can I use it?
+### OpenAI fine tuned models
 
-The most important part of this system is the data. Without the historic data this project can't do anything.
+The auto-triager has a command to generate a dataset that can later be used to fine tune a model via the UI https://platform.openai.com/finetune/
 
-You'll have to first generate the vector database so that the sytem can query it, to generate the vector db
-you'll first need to scrap all the issues from Grafana github.
+Two datasets can be generated:
 
-You might be better of asking a colleague to provide you with a pre-built vector db. If not then
-you'll have to generate it yourself.
+- A dataset for the qualitizer model.
+- A dataset for the categorizer model.
 
-## Populating the vector database
+The qualitizer model is used to determine if an issue is categorizable or not.
+The categorizer model is used to determine the area and type of an issue.
+
+## Generating the datasets for the fine tuned models
+
+> [!NOTE]
+> You don't need to do this if you want to use the gemini with RAG implementation.
+> or use the existing fine-tuned models.
+
+If you want to generate new datasets to finetune the models again you can follow the steps below.
+
+We already have fine-tuned models that are part of the grafana openai organization and you can use them directly.
+
+Make sure you are using an API key for the "Grafanalabs experiments exploration" organization.
+
+To generate the datasets you need to run the fine-tuner generator tool. It is easiest to run it with the `mage` tool.
 
 ### Requirements
 
 - Go 1.22.3 or higher installed
 - [Mage](https://magefile.org/)
-- A Github personal access token with read access to public repos
+- A Github personal access token with read access to public repos in the `GH_TOKEN` env var
+
+### Prepare the data
+
+You need to modify the fixtures files to adjust the ids of the issues you want to generate the dataset for.
+
+- `fixtures/categorizedIds.txt`: The ids of the issues that are correctly categorized. (used by the categorizer model)
+- `fixtures/areaLabels.txt`: The area labels of the issues. (used by the categorizer model)
+- `fixtures/typeLabels.txt`: The type labels of the issues. (used by the categorizer model)
+- `fixtures/categorizableIds.txt`: The ids of the issues that are consideredd categorizable. (used by the qualitizer model)
+- `fixtures/missingInfoIds.txt`: The ids of the issues that are missing information. (used by the qualitizer model)
+
+### Generate the datasets
+
+```bash
+mage -v run:finetuner qualitizer
+mage -v run:finetuner categorizer
+```
+
+This will generate the datasets in the `out` folder.
+
+### Fine tune the models
+
+To fine tune the models you need to go to https://platform.openai.com/finetune/ and create a new fine tune job.
+
+- Select the base model to fine tune
+- Select the dataset to use from the out folder (categorizer or qualitizer)
+- Put a name for the job: Usually auto-triager-[qualitizer|categorizer]
+
+## Populating the vector database
+
+> [!NOTE]
+> This is only needed if you want to use the gemini with RAG implementation.
+> If you want to use the fine tuned models you can skip this step.
+
+### Requirements
+
+- Go 1.22.3 or higher installed
+- [Mage](https://magefile.org/)
+- A Github personal access token with read access to public repos in the `GH_TOKEN` env var
 - A Google Cloud Platform API key with the text embedding api enabled
 
 ### Scraping all the issues from Grafana github
@@ -81,3 +138,46 @@ go run ./pkg/cmd/triager/triager.go -issueId 89449 -updateVectors=true
 ```
 
 Running with `-updateVectors=trur` will only update new entries in the sqlitedb.
+
+## How to use the fine tuned models
+
+> [!IMPORTANT]
+> Make sure you are using the API key for the "Grafanalabs experiments exploration" organization.
+
+### Requirements
+
+- Go 1.22.3 or higher installed
+- [Mage](https://magefile.org/)
+- A Github personal access token with read access to public repos in the `GH_TOKEN` env var
+
+### Running the triager
+
+```bash
+mage -v run:triagerFineTuned [issueId]
+```
+
+Where `[issueId]` is the issue id you want to triage (without the brackets).
+
+## How to use the Gemini with RAG implementation
+
+> [!IMPORTANT]
+> You must have the vector database generated before you can use the gemini with RAG implementation.
+> See the relevant section on how to generate it.
+> Or you can ask a colleague to provide you with a pre-built vector db.
+
+### Requirements
+
+- Go 1.22.3 or higher installed
+- [Mage](https://magefile.org/)
+- A Github personal access token with read access to public repos in the `GH_TOKEN` env var
+- A Google Cloud Platform API key with the text embedding api enabled in the `GEMINI_API_KEY` env var
+
+### Running the triager
+
+```bash
+mage -v run:triager [issueId]
+```
+
+Where `[issueId]` is the issue id you want to triage (without the brackets).
+
+This will also update the vector database in case you have new issues in the sqlitedb.
