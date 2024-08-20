@@ -200,7 +200,7 @@ func guaranteeIssueInDb(db *sql.DB, issueId string) bool {
 		return didRequest
 	}
 	didRequest = true
-	issue, err := github.FetchIssueDetails(issueIdInt)
+	issue, err := github.FetchGrafanaIssueDetails(issueIdInt)
 	if err != nil {
 		return didRequest
 	}

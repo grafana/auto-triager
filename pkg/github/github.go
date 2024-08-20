@@ -1,8 +1,10 @@
 package github
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -81,7 +83,7 @@ type Reactions struct {
 
 var githubToken = os.Getenv("GH_TOKEN")
 
-func FetchIssueDetails(issueId int) (Issue, error) {
+func FetchGrafanaIssueDetails(issueId int) (Issue, error) {
 	req, err := http.NewRequest(
 		"GET",
 		fmt.Sprintf("https://api.github.com/repos/grafana/grafana/issues/%d", issueId),
@@ -106,4 +108,52 @@ func FetchIssueDetails(issueId int) (Issue, error) {
 	}
 
 	return issue, nil
+}
+
+func PublishIssueToRepo(repo string, issue Issue, labels []string) (Issue, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/issues", repo)
+
+	payload, err := json.Marshal(map[string]interface{}{
+		"title":  issue.Title,
+		"body":   issue.Body,
+		"labels": labels,
+	})
+
+	fmt.Printf("Payload: %s\n", payload)
+	fmt.Printf("URL: %s\n", url)
+
+	if err != nil {
+		return Issue{}, err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return Issue{}, err
+	}
+
+	req.Header.Set("Authorization", "token "+githubToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return Issue{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return Issue{}, fmt.Errorf("Error creating issue. Status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Issue{}, err
+	}
+
+	var createdIssue Issue
+	if err := json.Unmarshal(body, &createdIssue); err != nil {
+		return Issue{}, err
+	}
+
+	return createdIssue, nil
 }

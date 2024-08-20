@@ -96,7 +96,7 @@ func main() {
 	}
 	typeLabels := string(typeLabelsContent)
 
-	issueData, err := github.FetchIssueDetails(*issueId)
+	issueData, err := github.FetchGrafanaIssueDetails(*issueId)
 	if err != nil {
 		log.Fatal("Error fetching issue details: ", err)
 	}

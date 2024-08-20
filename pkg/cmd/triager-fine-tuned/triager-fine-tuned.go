@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/auto-triage/pkg/github"
 	"github.com/grafana/auto-triage/pkg/prompts"
 	"github.com/sashabaranov/go-openai"
+	"github.com/tiktoken-go/tokenizer"
 )
 
 type QualityVeredict struct {
@@ -79,7 +80,7 @@ func main() {
 		log.Fatal("Error reading typeLabels.txt: ", err)
 	}
 
-	issueData, err := github.FetchIssueDetails(*issueId)
+	issueData, err := github.FetchGrafanaIssueDetails(*issueId)
 	if err != nil {
 		log.Fatal("Error fetching issue details: ", err)
 	}
@@ -167,6 +168,19 @@ func getIssueCategory(
 		`
 			### End of list of areas
 			`
+
+	// calculate the number of tokens
+	enc, err := tokenizer.Get(tokenizer.Cl100kBase)
+	if err != nil {
+		return CategorizedIssue{}, err
+	}
+
+	tokens, _, err := enc.Encode(categoryzerPrompt)
+	if err != nil {
+		return CategorizedIssue{}, err
+	}
+
+	fmt.Printf("Tokens: %d\n", len(tokens))
 
 	client := openai.NewClient(openAiKey)
 	resp, err := client.CreateChatCompletion(

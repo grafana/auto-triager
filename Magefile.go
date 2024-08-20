@@ -17,6 +17,10 @@ import (
 type Run mg.Namespace
 type Build mg.Namespace
 
+// set default to build commands
+
+var Default = Build.Commands
+
 var archTargets = map[string]map[string]string{
 	"darwin_amd64": {
 		"CGO_ENABLED": "1",
@@ -146,6 +150,20 @@ func (Run) TriagerFineTuned(ctx context.Context, id string) error {
 	command := []string{
 		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager-fine-tuned",
 		"-issueId=" + id,
+	}
+
+	return sh.RunV(command[0], command[1:]...)
+}
+
+func (Run) ActionTester(ctx context.Context, id string) error {
+	mg.Deps(func() error {
+		return buildCommand("action-tester", runtime.GOOS+"_"+runtime.GOARCH)
+	})
+
+	command := []string{
+		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/action-tester",
+		"-issueId=" + id,
+		"-repo=grafana/grafana-auto-triager-tests",
 	}
 
 	return sh.RunV(command[0], command[1:]...)
