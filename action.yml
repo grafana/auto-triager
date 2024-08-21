@@ -87,7 +87,7 @@ runs:
         curl -X POST \
           -H "Authorization: token ${{ inputs.token }}" \
           https://api.github.com/repos/${{ github.repository }}/issues/${{ inputs.issue_number }}/labels \
-          -d "{\"labels\":[${labels}]}"
+          -d "{\"labels\":[$labels]}"
 
     - name: Use output
       if: steps.check-state.outputs.should_triage == 'true'
