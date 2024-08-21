@@ -42,8 +42,8 @@ runs:
         echo "::set-output name=labels::$labels"
         echo "::set-output name=state::$state"
       shell: bash
-    - name: if state is not open or issue has internal label finish the job
-      if: steps.fetch-facts.outputs.state != open
+    - name: if state is not open
+      if: steps.fetch-facts.outputs.state != 'open'
       run: |
         echo "The issue is not open or has the internal label. Finishing the job."
         echo "::set-output name=should_triage::false"
