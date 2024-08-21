@@ -43,6 +43,7 @@ runs:
       shell: bash
 
     - name: if state is not open
+      id: check-state
       run: |
         if [ "${{ steps.fetch-facts.outputs.state }}" = "open" ]; then
           echo "should_triage=true" >> $GITHUB_OUTPUT
@@ -53,11 +54,11 @@ runs:
       shell: bash
 
     - uses: actions/setup-go@v5
-      if: steps.fetch-facts.outputs.should_triage == true
+      if: steps.check-state.outputs.should_triage == 'true'
       with:
         go-version: "1.22.3"
     - name: Run Triager
-      if: steps.fetch-facts.outputs.should_triage == 'true'
+      if: steps.check-state.outputs.should_triage == 'true'
       id: triager
       run: |
         output=$(go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }})
@@ -68,6 +69,6 @@ runs:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
 
     - name: Use output
-      if: steps.fetch-facts.outputs.should_triage == 'true'
+      if: steps.check-state.outputs.should_triage == '
       run: echo "${{ steps.triager.outputs.triager_output }}"
       shell: bash
