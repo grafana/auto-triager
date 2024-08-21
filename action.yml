@@ -61,7 +61,7 @@ runs:
       if: steps.check-state.outputs.should_triage == 'true'
       id: triager
       run: |
-        output=$(go run ${{ github.action_path }}../pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }})
+        output=$(go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }})
         echo "triager_output=$output" >> $GITHUB_OUTPUT
       shell: bash
       env:
