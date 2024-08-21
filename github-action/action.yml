@@ -69,6 +69,6 @@ runs:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
 
     - name: Use output
-      if: steps.check-state.outputs.should_triage == '
+      if: steps.check-state.outputs.should_triage == 'true'
       run: echo "${{ steps.triager.outputs.triager_output }}"
       shell: bash
