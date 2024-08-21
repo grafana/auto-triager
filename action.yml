@@ -79,10 +79,8 @@ runs:
       shell: bash
       if: steps.triager.outputs.triager_output != ''
       run: |
-        output='${{ steps.triager.outputs.triager_output }}'
-        labels=$(echo $output | jq -r '.areaLabel + .typeLabel | join(",")')
 
-        if [[ -z $labels ]]; then
+        if [[ -z ${{ steps.triager.outputs.labels }} ]]; then
           echo "No labels to add"
           exit 0
         fi
@@ -90,11 +88,7 @@ runs:
         curl -X POST \
           -H "Authorization: token ${{ inputs.token }}" \
           https://api.github.com/repos/${{ github.repository }}/issues/${{ inputs.issue_number }}/labels \
-          -d "{\"labels\":[$labels]}"
-          curl -X POST \
-          -H "Authorization: token ${{ inputs.token }}" \
-          "https://api.github.com/repos/${{ github.repository }}/issues/${{ inputs.issue_number }}/labels" \
-          -d "{\"labels\":[${labels}]}"
+          -d "{\"labels\":[${{ steps.triager.outputs.labels }}]}"
 
     - name: Use output
       if: steps.check-state.outputs.should_triage == 'true'
