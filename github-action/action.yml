@@ -27,7 +27,7 @@ runs:
         repo="${{ github.repository }}"
         labels=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
                 "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}" \
-              | jq -r '.labels[] | select(.name == "${{ env.INTERNAL_LABEL }}") | .name')
+              | jq -r '.labels[] | select(.name == "$INTERNAL_LABEL") | .name')
         echo "Issue number: ${{ inputs.issue_number }}"
         echo "Api url: https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}"
         echo "Repo name: $repo"
@@ -39,7 +39,7 @@ runs:
       id: check_internal
       run: |
         labels="${{ steps.fetch_labels.outputs.labels }}"
-        if echo "$labels" | grep -q "${{ env.INTERNAL_LABEL }}"; then
+        if echo "$labels" | grep -q "$INTERNAL_LABEL"; then
           echo "The 'internal' label was found."
           echo "::set-output name=has-internal::true"
         else
