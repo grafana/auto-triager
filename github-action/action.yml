@@ -24,7 +24,7 @@ runs:
         repo="${{ github.repository }}"
         labels=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
                 "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}" \
-              | jq -r '.labels[].name')
+              | jq -r '.labels | map(.name) | join(",")')
         echo "Issue number: ${{ inputs.issue_number }}"
         echo "Api url: https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}"
         echo "Repo name: $repo"
