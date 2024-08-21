@@ -3,8 +3,11 @@ name: "Check Issue Label"
 description: 'Checks if an issue has the "internal" label and sets outputs or prints messages accordingly.'
 
 inputs:
-  labels:
-    description: "A list of labels attached to the issue"
+  token:
+    description: "GitHub token to access the issue information"
+    required: true
+  issue_number:
+    description: "The number of the issue to check"
     required: true
 
 outputs:
@@ -15,10 +18,22 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Fetch issue labels
+      id: fetch_labels
+      run: |
+        repo="${{ github.repository }}"
+        labels=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
+                "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}" \
+              | jq -r '.labels[].name')
+        echo "Fetched labels: $labels"
+        echo "::set-output name=labels::$labels"
+      shell: bash
+
     - name: Check for "internal" label
       id: check_internal
       run: |
-        if echo "${{ inputs.labels }}" | grep -q "internal"; then
+        labels="${{ steps.fetch_labels.outputs.labels }}"
+        if echo "$labels" | grep -q "internal"; then
           echo "The 'internal' label was found."
           echo "::set-output name=has-internal::true"
         else
