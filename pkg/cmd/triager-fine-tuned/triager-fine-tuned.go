@@ -120,7 +120,11 @@ func main() {
 	}
 
 	Debug.Print("Finished categorizing issue")
-	fmt.Printf("%v", category)
+	categoryJson, err := json.Marshal(category)
+	if err != nil {
+		Debug.Fatalf("Error marshalling category: %v\n", err)
+	}
+	fmt.Printf("%s", categoryJson)
 
 }
 
