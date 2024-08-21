@@ -67,6 +67,9 @@ runs:
         go mod download
         go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }} | tee triager_output.txt
         echo "triager_output=$(cat triager_output.txt)" >> $GITHUB_OUTPUT
+
+        labels=$(cat triager_output.txt | jq -r '.areaLabel + .typeLabel | join(",")')
+        echo "labels=$labels" >> $GITHUB_OUTPUT
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
@@ -88,6 +91,10 @@ runs:
           -H "Authorization: token ${{ inputs.token }}" \
           https://api.github.com/repos/${{ github.repository }}/issues/${{ inputs.issue_number }}/labels \
           -d "{\"labels\":[$labels]}"
+          curl -X POST \
+          -H "Authorization: token ${{ inputs.token }}" \
+          "https://api.github.com/repos/${{ github.repository }}/issues/${{ inputs.issue_number }}/labels" \
+          -d "{\"labels\":[${labels}]}"
 
     - name: Use output
       if: steps.check-state.outputs.should_triage == 'true'
