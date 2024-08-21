@@ -24,7 +24,6 @@ runs:
     - name: Set variables
       run: |
         echo "INTERNAL_LABEL=internal" >> $GITHUB_ENV
-        echo "should_triage=true" >> $GITHUB_OUTPUT
       shell: bash
     - name: Fetch issue labels
       id: fetch-facts
@@ -42,11 +41,15 @@ runs:
         echo "labels=$labels" >> $GITHUB_OUTPUT
         echo "state=$state" >> $GITHUB_OUTPUT
       shell: bash
+
     - name: if state is not open
-      if: steps.fetch-facts.outputs.state != 'open'
       run: |
-        echo "The issue is not open or has the internal label. Finishing the job."
-        echo "should_triage=false" >> $GITHUB_OUTPUT
+        if [ "${{ steps.fetch-facts.outputs.state }}" = "open" ]; then
+          echo "should_triage=true" >> $GITHUB_OUTPUT
+        else
+          echo "The issue is not open or has the internal label. Finishing the job."
+          echo "should_triage=false" >> $GITHUB_OUTPUT
+        fi
       shell: bash
 
     - uses: actions/setup-go@v5
