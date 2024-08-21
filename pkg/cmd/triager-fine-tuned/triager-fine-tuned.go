@@ -119,6 +119,7 @@ func main() {
 		Debug.Fatalf("Error categorizing issue: %v\n", err)
 	}
 
+	Debug.Print("Finished categorizing issue")
 	fmt.Printf("%v", category)
 
 }
