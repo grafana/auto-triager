@@ -72,6 +72,22 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
 
+    - name: Add Labels
+      if: steps.triager.outputs.triager_output != ''
+      shell: bash
+      run: |
+        output='${{ steps.triager.outputs.triager_output }}'
+        areaLabels=$(echo $output | jq -r '.areaLabel[]' | tr '\n' ' ')
+        typeLabels=$(echo $output | jq -r '.typeLabel[]' | tr '\n' ' ')
+
+        allLabels=($areaLabels $typeLabels)
+
+        echo "All labels: ${allLabels[@]}"
+
+        # gh issue edit ${{ inputs.issue_number }} --add-label "${allLabels[@]}"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Use output
       if: steps.check-state.outputs.should_triage == 'true'
       run: echo "${{ steps.triager.outputs.triager_output }}"
