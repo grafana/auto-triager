@@ -54,7 +54,7 @@ runs:
     - name: Run Triager
       id: triager
       run: |
-        output=$(go run ../pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }})
+        output=$(go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }})
         echo "triager_output=$output" >> $GITHUB_OUTPUT
       shell: bash
       env:
