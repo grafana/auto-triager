@@ -35,6 +35,7 @@ var (
 	openAiKey        = os.Getenv("OPENAI_API_KEY")
 	ghToken          = os.Getenv("GH_TOKEN")
 	issueId          = flag.Int("issueId", 0, "Github Issue ID (only the number)")
+	repo             = flag.String("repo", "grafana/grafana", "Github repo to push the issue to")
 	categorizerModel = flag.String(
 		"categorizerModel",
 		// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:auto-triage:9ssSMoCP", // 800k training tokens
@@ -80,7 +81,7 @@ func main() {
 		log.Fatal("Error reading typeLabels.txt: ", err)
 	}
 
-	issueData, err := github.FetchGrafanaIssueDetails(*issueId)
+	issueData, err := github.FetchIssueDetails(*issueId, *repo)
 	if err != nil {
 		log.Fatal("Error fetching issue details: ", err)
 	}
@@ -94,14 +95,14 @@ func main() {
 
 	fmt.Printf(":: Checking if issue can be categorized\n")
 
-	qualityVeredict, err := getIssueIsCategorizable(&issueData, qualitizerModel)
-
-	if err != nil {
-		log.Fatal("Error judging issue quality: ", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Is categorizable: %s\n", strconv.FormatBool(qualityVeredict.IsCategorizable))
+	// qualityVeredict, err := getIssueIsCategorizable(&issueData, qualitizerModel)
+	//
+	// if err != nil {
+	// 	log.Fatal("Error judging issue quality: ", err)
+	// 	os.Exit(1)
+	// }
+	//
+	// fmt.Printf("Is categorizable: %s\n", strconv.FormatBool(qualityVeredict.IsCategorizable))
 
 	fmt.Printf(":: Categorizing issue\n")
 

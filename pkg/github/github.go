@@ -83,10 +83,10 @@ type Reactions struct {
 
 var githubToken = os.Getenv("GH_TOKEN")
 
-func FetchGrafanaIssueDetails(issueId int) (Issue, error) {
+func FetchIssueDetails(issueId int, repo string) (Issue, error) {
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("https://api.github.com/repos/grafana/grafana/issues/%d", issueId),
+		fmt.Sprintf("https://api.github.com/repos/%s/issues/%d", repo, issueId),
 		nil,
 	)
 
@@ -108,6 +108,10 @@ func FetchGrafanaIssueDetails(issueId int) (Issue, error) {
 	}
 
 	return issue, nil
+}
+
+func FetchGrafanaIssueDetails(issueId int) (Issue, error) {
+	return FetchIssueDetails(issueId, "grafana/grafana")
 }
 
 func PublishIssueToRepo(repo string, issue Issue, labels []string) (Issue, error) {

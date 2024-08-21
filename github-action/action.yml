@@ -9,6 +9,9 @@ inputs:
   issue_number:
     description: "The number of the issue to check"
     required: true
+  openai_api_key:
+    description: "OpenAI API key to use for the triager"
+    required: true
 
 outputs:
   has-internal:
@@ -19,31 +22,45 @@ runs:
   using: "composite"
   steps:
     - name: Set variables
-      run: echo "INTERNAL_LABEL=internal" >> $GITHUB_ENV
+      run: |
+        echo "INTERNAL_LABEL=internal" >> $GITHUB_ENV
+        echo "::set-output name=should_triage::true"
       shell: bash
     - name: Fetch issue labels
       id: fetch_labels
       run: |
         repo="${{ github.repository }}"
-        labels=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
-                "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}" \
-              | jq -r '.labels[] | select(.name == "${{ env.INTERNAL_LABEL }}") | .name')
-        echo "Issue number: ${{ inputs.issue_number }}"
-        echo "Api url: https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}"
-        echo "Repo name: $repo"
-        echo "Fetched labels: $labels"
-        echo "::set-output name=labels::$labels"
-      shell: bash
+        issue_info=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
+                "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}")
+        labels=$(echo "$issue_info" | jq -r '.labels[] | select(.name == "${{ env.INTERNAL_LABEL }}") | .name')
+        state=$(echo "$issue_info" | jq -r '.state')
 
-    - name: Check for "internal" label
-      id: check_internal
+        echo "Issue number: ${{ inputs.issue_number }}"
+        echo "Fetched labels: $labels"
+        echo "Fetched state: $state"
+
+        echo "::set-output name=labels::$labels"
+        echo "::set-output name=state::$state"
+      shell: bash
+    - name: if state is not open or issue has internal label finish the job
+      if: steps.fetch_labels.outputs.state != 'open' || steps.fetch_labels.outputs.labels == '${{ env.INTERNAL_LABEL }}'
       run: |
-        labels="${{ steps.fetch_labels.outputs.labels }}"
-        if echo "$labels" | grep -q "${{ env.INTERNAL_LABEL }}"; then
-          echo "The 'internal' label was found."
-          echo "::set-output name=has-internal::true"
-        else
-          echo "hello world"
-          echo "::set-output name=has-internal::false"
-        fi
+        echo "The issue is not open or has the internal label. Finishing the job."
+        echo "::set-output should_triage::false"
+      shell: bash
+    - uses: actions/setup-go@v5
+      with:
+        go-version: "1.22.3"
+    - name: Run Triager
+      id: triager
+      run: |
+        output=$(go run ../pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }})
+        echo "triager_output=$output" >> $GITHUB_OUTPUT
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+
+    - name: Use output
+      run: echo "${{ steps.triager.outputs.triager_output }}"
       shell: bash
