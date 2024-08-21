@@ -86,7 +86,7 @@ runs:
 
         # gh issue edit ${{ inputs.issue_number }} --add-label "${allLabels[@]}"
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ inputs.token }}
 
     - name: Use output
       if: steps.check-state.outputs.should_triage == 'true'
