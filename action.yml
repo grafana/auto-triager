@@ -84,7 +84,7 @@ runs:
 
         echo "All labels: ${allLabels[@]}"
 
-        # gh issue edit ${{ inputs.issue_number }} --add-label "${allLabels[@]}"
+        gh issue edit ${{ inputs.issue_number }} --add-label "${allLabels[@]}"
       env:
         GH_TOKEN: ${{ inputs.token }}
 
