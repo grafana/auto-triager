@@ -27,7 +27,7 @@ runs:
         echo "::set-output name=should_triage::true"
       shell: bash
     - name: Fetch issue labels
-      id: fetch_labels
+      id: fetch-facts
       run: |
         repo="${{ github.repository }}"
         issue_info=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
@@ -43,15 +43,18 @@ runs:
         echo "::set-output name=state::$state"
       shell: bash
     - name: if state is not open or issue has internal label finish the job
-      if: steps.fetch_labels.outputs.state != 'open' || steps.fetch_labels.outputs.labels == '${{ env.INTERNAL_LABEL }}'
+      if: steps.fetch-facts.outputs.state != 'open' || steps.fetch-facts.outputs.labels == '${{ env.INTERNAL_LABEL }}'
       run: |
         echo "The issue is not open or has the internal label. Finishing the job."
-        echo "::set-output should_triage::false"
+        echo "::set-output name=should_triage::false"
       shell: bash
+
     - uses: actions/setup-go@v5
+      if: steps.fetch-facts.outputs.should_triage == 'true'
       with:
         go-version: "1.22.3"
     - name: Run Triager
+      if: steps.fetch-facts.outputs.should_triage == 'true'
       id: triager
       run: |
         output=$(go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }})
@@ -62,5 +65,6 @@ runs:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
 
     - name: Use output
+      if: steps.fetch-facts.outputs.should_triage == 'true'
       run: echo "${{ steps.triager.outputs.triager_output }}"
       shell: bash
