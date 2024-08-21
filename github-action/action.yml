@@ -25,6 +25,8 @@ runs:
         labels=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
                 "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}" \
               | jq -r '.labels[].name')
+        echo "Issue number: ${{ inputs.issue_number }}"
+        echo "Repo name: $repo"
         echo "Fetched labels: $labels"
         echo "::set-output name=labels::$labels"
       shell: bash
