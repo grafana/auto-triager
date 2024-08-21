@@ -65,8 +65,8 @@ runs:
       run: |
         cd ${{ github.action_path }}
         go mod download
-        output=$(go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }})
-        echo "triager_output=$output" >> $GITHUB_OUTPUT
+        go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }} | tee triager_output.txt
+        echo "triager_output=hello" >> $GITHUB_OUTPUT
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
