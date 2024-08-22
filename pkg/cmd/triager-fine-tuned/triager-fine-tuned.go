@@ -40,6 +40,7 @@ var (
 		"categorizerModel",
 		// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:auto-triage:9ssSMoCP", // 800k training tokens
 		"ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:auto-triage:9ss5MNR0", // 400k training tokens
+		// "ft:gpt-4o-2024-08-06:grafana-labs-experiments-exploration:issue-auto-triager:9yxdY5IU", // 400k training tokens gpt-4o
 		"Model to use",
 	)
 	// qualitizerModel = flag.String(
@@ -106,6 +107,10 @@ func main() {
 	// logme.InfoF("Is categorizable: %s\n", strconv.FormatBool(qualityVeredict.IsCategorizable))
 
 	logme.InfoF(":: Categorizing issue\n")
+	logme.DebugF("Repo: %s\n", *repo)
+	logme.DebugF("Issue ID: %d\n", *issueId)
+	logme.DebugF("Model: %s\n", *categorizerModel)
+	logme.DebugF("Issue title: %s\n", issueData.Title)
 
 	category, err := getIssueCategory(&issueData, categorizerModel, typeLabels, areaLabels)
 	if err != nil {
