@@ -42,7 +42,7 @@ runs:
         echo "state=$state" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: if state is not open
+    - name: check if state is not open
       id: check-state
       run: |
         if [ "${{ steps.fetch-facts.outputs.state }}" = "open" ]; then

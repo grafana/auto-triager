@@ -147,12 +147,16 @@ func (Run) TriagerFineTuned(ctx context.Context, id string) error {
 		return buildCommand("triager-fine-tuned", runtime.GOOS+"_"+runtime.GOARCH)
 	})
 
+	env := map[string]string{
+		"DEBUG": "1",
+	}
+
 	command := []string{
 		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager-fine-tuned",
 		"-issueId=" + id,
 	}
 
-	return sh.RunV(command[0], command[1:]...)
+	return sh.RunWith(env, command[0], command[1:]...)
 }
 
 func (Run) ActionTester(ctx context.Context, id string) error {
