@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/grafana/auto-triage/pkg/github"
 	"github.com/grafana/auto-triage/pkg/logme"
@@ -56,6 +57,11 @@ var (
 		false,
 		"Add labels to the issue in the repo via the GitHub API",
 	)
+	retries = flag.Int(
+		"retries",
+		3,
+		"Number of retries to use when categorizing an issue",
+	)
 	labelsFile = flag.String(
 		"labelsFile",
 		"fixtures/areaLabels.txt",
@@ -69,9 +75,11 @@ var (
 )
 
 func main() {
+	var err error
+
 	flag.Parse()
 
-	err := validateFlags()
+	err = validateFlags()
 	if err != nil {
 		logme.FatalF("Error validating flags: %v\n", err)
 	}
@@ -112,8 +120,24 @@ func main() {
 	logme.DebugF("Model: %s\n", *categorizerModel)
 	logme.DebugF("Issue title: %s\n", issueData.Title)
 
-	category, err := getIssueCategory(&issueData, categorizerModel, typeLabels, areaLabels)
-	if err != nil {
+	leftRetries := *retries
+
+	category := CategorizedIssue{}
+
+	for leftRetries > 0 {
+		category, err = getIssueCategory(&issueData, categorizerModel, typeLabels, areaLabels)
+		if err != nil {
+			retriesLeft := leftRetries - 1
+			logme.ErrorF("Error categorizing issue: %v\n", err)
+			logme.InfoF("Retrying in 1 second. %d retries left\n", retriesLeft)
+			time.Sleep(time.Second)
+			leftRetries = retriesLeft
+			continue
+		}
+		break
+	}
+
+	if leftRetries == 0 && err != nil {
 		logme.FatalF("Error categorizing issue: %v\n", err)
 	}
 
