@@ -121,12 +121,11 @@ func main() {
 	logme.DebugF("Issue title: %s\n", issueData.Title)
 
 	leftRetries := *retries
-
 	category := CategorizedIssue{}
 
 	for leftRetries > 0 {
 		category, err = getIssueCategory(&issueData, categorizerModel, typeLabels, areaLabels)
-		if err != nil {
+		if err != nil || category.ID == 0 || category.ID == nil {
 			retriesLeft := leftRetries - 1
 			logme.ErrorF("Error categorizing issue: %v\n", err)
 			logme.InfoF("Retrying in 1 second. %d retries left\n", retriesLeft)
@@ -134,6 +133,7 @@ func main() {
 			leftRetries = retriesLeft
 			continue
 		}
+
 		break
 	}
 
@@ -265,7 +265,7 @@ func getIssueCategory(
 	category := CategorizedIssue{}
 	err = json.Unmarshal([]byte(resp.Choices[0].Message.Content), &category)
 	if err != nil {
-		return CategorizedIssue{}, err
+		return CategorizedIssue{}, fmt.Errorf("error unmarshaling issue category: %w", err)
 	}
 
 	return category, nil
