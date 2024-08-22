@@ -6,19 +6,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/grafana/auto-triage/pkg/github"
+	"github.com/grafana/auto-triage/pkg/logme"
 	"github.com/grafana/auto-triage/pkg/prompts"
 	"github.com/sashabaranov/go-openai"
 	"github.com/tiktoken-go/tokenizer"
 )
-
-var Debug *log.Logger
 
 type QualityVeredict struct {
 	IsCategorizable bool        `json:"isCategorizable"`
@@ -53,6 +50,11 @@ var (
 	// 	"ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tWTKBHh", // good. trained with a larger dataset. might produce remarks but most of the time it doesn't
 	// 	"Model to use",
 	// )
+	addLabels = flag.Bool(
+		"addLabels",
+		false,
+		"Add labels to the issue in the repo via the GitHub API",
+	)
 	labelsFile = flag.String(
 		"labelsFile",
 		"fixtures/areaLabels.txt",
@@ -68,40 +70,31 @@ var (
 func main() {
 	flag.Parse()
 
-	if os.Getenv("DEBUG") == "1" {
-		Debug = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
-	} else {
-		Debug = log.New(io.Discard, "", 0)
-	}
-
 	err := validateFlags()
 	if err != nil {
-		Debug.Fatalf("Error validating flags: %v\n", err)
-		os.Exit(1)
+		logme.FatalF("Error validating flags: %v\n", err)
 	}
 
 	areaLabels, err := readFileLines(*labelsFile)
 	if err != nil {
-		Debug.Fatalf("Error reading areaLabels.txt: %v\n", err)
+		logme.FatalF("Error reading areaLabels.txt: %v\n", err)
 	}
 
 	typeLabels, err := readFileLines(*typesFile)
 	if err != nil {
-		Debug.Fatalf("Error reading typeLabels.txt: %v\n", err)
+		logme.FatalF("Error reading typeLabels.txt: %v\n", err)
 	}
 
 	issueData, err := github.FetchIssueDetails(*issueId, *repo)
 	if err != nil {
-		Debug.Fatalf("Error fetching issue details: %v\n", err)
+		logme.FatalF("Error fetching issue details: %v\n", err)
 	}
 
 	if issueData.Title == "" {
-		Debug.Fatal("Error fetching issue details: Title is empty")
-		os.Exit(1)
+		logme.FatalLn("Error fetching issue details: Title is empty")
 	}
 
-	Debug.Printf(":: Got issue %d with title: %s\n", *issueId, issueData.Title)
-	// Debug.Printf(":: Checking if issue can be categorized\n")
+	// logme.InfoF(":: Checking if issue can be categorized\n")
 
 	// qualityVeredict, err := getIssueIsCategorizable(&issueData, qualitizerModel)
 	//
@@ -110,20 +103,21 @@ func main() {
 	// 	os.Exit(1)
 	// }
 	//
-	// Debug.Printf("Is categorizable: %s\n", strconv.FormatBool(qualityVeredict.IsCategorizable))
+	// logme.InfoF("Is categorizable: %s\n", strconv.FormatBool(qualityVeredict.IsCategorizable))
 
-	Debug.Printf(":: Categorizing issue\n")
+	logme.InfoF(":: Categorizing issue\n")
 
 	category, err := getIssueCategory(&issueData, categorizerModel, typeLabels, areaLabels)
 	if err != nil {
-		Debug.Fatalf("Error categorizing issue: %v\n", err)
+		logme.FatalF("Error categorizing issue: %v\n", err)
 	}
 
-	Debug.Print("Finished categorizing issue")
+	logme.InfoF("Finished categorizing issue")
 	categoryJson, err := json.Marshal(category)
 	if err != nil {
-		Debug.Fatalf("Error marshalling category: %v\n", err)
+		logme.FatalF("Error marshalling category: %v\n", err)
 	}
+
 	fmt.Printf("%s", categoryJson)
 
 }
@@ -193,7 +187,7 @@ func getIssueCategory(
 		return CategorizedIssue{}, err
 	}
 
-	Debug.Printf("Tokens: %d\n", len(tokens))
+	logme.DebugFln("Tokens: %d\n", len(tokens))
 
 	client := openai.NewClient(openAiKey)
 	resp, err := client.CreateChatCompletion(
@@ -221,7 +215,7 @@ func getIssueCategory(
 	)
 
 	if err != nil {
-		Debug.Printf("ChatCompletion error: %v\n", err)
+		logme.FatalF("ChatCompletion error: %v\n", err)
 		return CategorizedIssue{}, err
 	}
 

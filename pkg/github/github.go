@@ -161,3 +161,39 @@ func PublishIssueToRepo(repo string, issue Issue, labels []string) (Issue, error
 
 	return createdIssue, nil
 }
+
+func AddLabelsToIssue(repo string, issueId int, labels []string) error {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/issues/%d/labels", repo, issueId)
+
+	payload, err := json.Marshal(map[string]interface{}{
+		"labels": labels,
+	})
+
+	fmt.Printf("Payload: %s\n", payload)
+	fmt.Printf("URL: %s\n", url)
+
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "token "+githubToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("Error creating issue. Status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
