@@ -191,7 +191,7 @@ func AddLabelsToIssue(repo string, issueId int, labels []string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Error creating issue. Status code: %d", resp.StatusCode)
 	}
 
