@@ -50,13 +50,9 @@ func Errorln(arg ...interface{}) {
 }
 
 func FatalLn(arg ...interface{}) {
-	if !silentMode {
-		errorLogger.Fatalln(arg...)
-	}
+	errorLogger.Fatalln(arg...)
 }
 
 func FatalF(msg string, args ...interface{}) {
-	if !silentMode {
-		errorLogger.Fatalf(msg, args...)
-	}
+	errorLogger.Fatalf(msg, args...)
 }

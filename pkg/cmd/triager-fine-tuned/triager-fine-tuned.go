@@ -113,6 +113,20 @@ func main() {
 	}
 
 	logme.InfoF("Finished categorizing issue")
+
+	if *addLabels {
+		logme.InfoF("Adding labels to issue")
+
+		labels := []string{}
+		labels = append(labels, category.AreaLabel...)
+		labels = append(labels, category.TypeLabel...)
+		err = github.AddLabelsToIssue(*repo, *issueId, labels)
+		if err != nil {
+			logme.FatalF("Error adding labels to issue: %v\n", err)
+		}
+		logme.InfoF("Finished adding labels to issue")
+	}
+
 	categoryJson, err := json.Marshal(category)
 	if err != nil {
 		logme.FatalF("Error marshalling category: %v\n", err)

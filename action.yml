@@ -59,38 +59,19 @@ runs:
         go-version: "1.22.3"
         go-version-file: "${{ github.action_path }}/go.mod"
 
-    - name: Run Triager
+    - name: Run Auto Triager and add labels
       if: steps.check-state.outputs.should_triage == 'true'
       id: triager
       run: |
         cd ${{ github.action_path }}
         go mod download
-        go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }} | tee triager_output.txt
+        echo "Running auto triager"
+        go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }} -addLabels=true | tee triager_output.txt
         echo "triager_output=$(cat triager_output.txt)" >> $GITHUB_OUTPUT
-
         labels=$(cat triager_output.txt | jq -r '.areaLabel + .typeLabel  | map("\\\"\(.)\\\"")| join(",")')
-        echo "labels=$labels" >> $GITHUB_OUTPUT
+        echo ""
+        echo "Final labels: $labels"
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
-
-    - name: Add Labels
-      shell: bash
-      if: steps.triager.outputs.triager_output != ''
-      run: |
-
-        if [[ -z ${{ steps.triager.outputs.labels }} ]]; then
-          echo "No labels to add"
-          exit 0
-        fi
-
-        curl -X POST \
-          -H "Authorization: token ${{ inputs.token }}" \
-          https://api.github.com/repos/${{ github.repository }}/issues/${{ inputs.issue_number }}/labels \
-          -d "{\"labels\":[${{ steps.triager.outputs.labels }}]}"
-
-    - name: Use output
-      if: steps.check-state.outputs.should_triage == 'true'
-      run: echo "${{ steps.triager.outputs.triager_output }}"
-      shell: bash
