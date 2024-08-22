@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/grafana/auto-triage/pkg/logme"
 )
 
 type Issue struct {
@@ -123,8 +125,8 @@ func PublishIssueToRepo(repo string, issue Issue, labels []string) (Issue, error
 		"labels": labels,
 	})
 
-	fmt.Printf("Payload: %s\n", payload)
-	fmt.Printf("URL: %s\n", url)
+	logme.DebugF("Payload: %s\n", payload)
+	logme.DebugF("URL: %s\n", url)
 
 	if err != nil {
 		return Issue{}, err
@@ -169,8 +171,8 @@ func AddLabelsToIssue(repo string, issueId int, labels []string) error {
 		"labels": labels,
 	})
 
-	fmt.Printf("Payload: %s\n", payload)
-	fmt.Printf("URL: %s\n", url)
+	logme.DebugF("Payload: %s\n", payload)
+	logme.DebugF("URL: %s\n", url)
 
 	if err != nil {
 		return err

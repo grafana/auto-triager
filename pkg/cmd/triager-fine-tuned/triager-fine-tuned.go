@@ -201,7 +201,7 @@ func getIssueCategory(
 		return CategorizedIssue{}, err
 	}
 
-	logme.DebugFln("Tokens: %d\n", len(tokens))
+	logme.DebugF("Tokens: %d\n", len(tokens))
 
 	client := openai.NewClient(openAiKey)
 	resp, err := client.CreateChatCompletion(

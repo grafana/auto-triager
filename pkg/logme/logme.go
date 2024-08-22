@@ -12,7 +12,7 @@ var errorLogger = log.New(os.Stderr, "[ERROR] ", log.Ldate|log.Ltime|log.Lshortf
 var isDebugMode bool = os.Getenv("DEBUG") == "1" || os.Getenv("DEBUG") == "true"
 var silentMode bool = os.Getenv("SILENT") == "1" || os.Getenv("GITHUB_ACTIONS") == "true"
 
-func DebugFln(msg string, args ...interface{}) {
+func DebugF(msg string, args ...interface{}) {
 	if isDebugMode {
 		debugLogger.Printf(msg, args...)
 	}
