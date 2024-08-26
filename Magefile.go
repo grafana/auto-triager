@@ -172,3 +172,15 @@ func (Run) ActionTester(ctx context.Context, id string) error {
 
 	return sh.RunV(command[0], command[1:]...)
 }
+
+func (Run) LabelProjectMatcher() error {
+	mg.Deps(func() error {
+		return buildCommand("label-project-matcher", runtime.GOOS+"_"+runtime.GOARCH)
+	})
+
+	command := []string{
+		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/label-project-matcher",
+	}
+
+	return sh.RunV(command[0], command[1:]...)
+}
