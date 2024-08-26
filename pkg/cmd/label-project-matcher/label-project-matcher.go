@@ -85,7 +85,7 @@ func main() {
         node {
           title
           number
-          projectCards(first: 20) {
+          projectCards(first: 100) {
             edges {
               node {
                 project {
@@ -181,7 +181,7 @@ func main() {
 		return cards[i].Counter > cards[j].Counter // Ascending order
 	})
 
-	fmt.Printf("\nSorted cards:\n\n")
+	fmt.Printf("\nThe following projects have the most issues with the label %s:\n\n", *label)
 
 	// Display sorted cards
 	for _, card := range cards {
