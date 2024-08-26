@@ -63,7 +63,7 @@ runs:
       id: triager
       run: |
         cd ${{ github.action_path }}
-        go mod download
+        # go mod download
         echo "Running auto triager"
         go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }} -addLabels=true | tee triager_output.txt
         echo "triager_output=$(cat triager_output.txt)" >> $GITHUB_OUTPUT
