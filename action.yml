@@ -59,9 +59,8 @@ runs:
       if: steps.check-state.outputs.should_triage == 'true'
       with:
         go-version-file: "${{ github.action_path }}/go.mod"
+      working-directory: ${{ github.action_path }}
 
-    # This is the main action. It will run the auto triager and add the labels to the issue.
-    # Everything is handled by the auto triager tool ./pkg/cmd/triager-fine-tuned/triager-fine-tuned.go
     - name: Run Auto Triager and add labels
       if: steps.check-state.outputs.should_triage == 'true'
       id: triager
