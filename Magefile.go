@@ -134,7 +134,7 @@ func (Run) FineTuner(ctx context.Context, cmd string) error {
 		"-issuesDb=github-data.sqlite",
 		"-categorizedIdsFile=fixtures/categorizedIds.txt",
 		"-missingInfoIdsFile=fixtures/missingInfoIds.txt",
-		"-categorizableIdsFile=fixtures/categorizableIds.txt",
+		"-goodIssuesIds=fixtures/good-issues-ids.txt",
 		fmt.Sprintf("-outFile=%s", outFile),
 		cmd,
 	}

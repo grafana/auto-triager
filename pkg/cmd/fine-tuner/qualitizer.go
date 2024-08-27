@@ -19,12 +19,12 @@ var qualitizerSystemPrompt = PromptMessage{
 
 func generateQualitizerDataset(
 	db *sql.DB,
-	categorizableIdsFile string,
+	goodIssuesIdsFile string,
 	missingInfoIdsFile string,
 	outFile string,
 ) error {
 
-	categorizableIds, err := readFileLines(categorizableIdsFile, 100)
+	categorizableIds, err := readFileLines(goodIssuesIdsFile, 100)
 	if err != nil {
 		return err
 	}

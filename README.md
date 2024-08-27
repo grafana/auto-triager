@@ -59,7 +59,7 @@ You need to modify the fixtures files to adjust the ids of the issues you want t
 - `fixtures/categorizedIds.txt`: The ids of the issues that are correctly categorized. (used by the categorizer model)
 - `fixtures/areaLabels.txt`: The area labels of the issues. (used by the categorizer model)
 - `fixtures/typeLabels.txt`: The type labels of the issues. (used by the categorizer model)
-- `fixtures/categorizableIds.txt`: The ids of the issues that are consideredd categorizable. (used by the qualitizer model)
+- `fixtures/good-issues-ids.txt`: The ids of the issues that are consideredd categorizable. (used by the qualitizer model)
 - `fixtures/missingInfoIds.txt`: The ids of the issues that are missing information. (used by the qualitizer model)
 
 ### Generate the datasets

@@ -32,8 +32,8 @@ var (
 		"",
 		"File containing the ids of the issues to process. One per line",
 	)
-	categorizableIdsFile = flag.String(
-		"categorizableIdsFile",
+	goodIssuesIdsFile = flag.String(
+		"goodIssuesIds",
 		"",
 		"File containing the ids of the issues that are consideredd categorizable. One per line",
 	)
@@ -94,7 +94,7 @@ func main() {
 	}
 
 	if cmd == "qualitizer" {
-		err = generateQualitizerDataset(db, *categorizableIdsFile, *missingInfoIdsFile, *outFile)
+		err = generateQualitizerDataset(db, *goodIssuesIdsFile, *missingInfoIdsFile, *outFile)
 		if err != nil {
 			fmt.Printf("Error generating qualitizer dataset: %v\n", err)
 			os.Exit(1)
