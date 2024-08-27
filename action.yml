@@ -25,7 +25,9 @@ runs:
       run: |
         echo "INTERNAL_LABEL=internal" >> $GITHUB_ENV
       shell: bash
-    - name: Fetch issue labels
+
+    # To prevent triaging issues that are tagged as internal or have been closed quickly
+    - name: Fetch issue labels and state
       id: fetch-facts
       run: |
         repo="${{ github.repository }}"
@@ -58,6 +60,8 @@ runs:
       with:
         go-version-file: "${{ github.action_path }}/go.mod"
 
+    # This is the main action. It will run the auto triager and add the labels to the issue.
+    # Everything is handled by the auto triager tool ./pkg/cmd/triager-fine-tuned/triager-fine-tuned.go
     - name: Run Auto Triager and add labels
       if: steps.check-state.outputs.should_triage == 'true'
       id: triager

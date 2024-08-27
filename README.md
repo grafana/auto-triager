@@ -1,38 +1,16 @@
 # Auto Grafana issue triager with Gemini and OpenAI (fine tuned models)
 
-This is a (rather naive) attempt to create an auto triage system for Grafana issues.
+This is tool to automatically triage Grafana issues using OpenAI GPT or Google Gemini.
 
-## How does it work?
-
-There are two different implementations of the auto triager, one using Gemini with RAG and one using OpenAI fine tuned models.
-
-### Gemini with RAG
-
-The auto-triager uses retrieval-augmented generation (RAG) to generate a long list of historic data
-that is later sent to the remote model for analysis.
-
-These are the steps that follows:
-
-- Reads the issue from Github
-- Converts the issue title/content to an embedded document via [google text embedding api](https://ai.google.dev/gemini-api/docs/embeddings)
-- Queries a pre-built vector database with all the historic issues from Grafana github
-- Puts together a prompt using the historic data, the issue content and the possible labels asking the model to classify the issue
-- Sends the prompt to the model
-- Returns the model's classification JSON output
-
-### OpenAI fine tuned models
-
-The auto-triager has a command to generate a dataset that can later be used to fine tune a model via the UI https://platform.openai.com/finetune/
-
-Two datasets can be generated:
-
-- A dataset for the qualitizer model.
-- A dataset for the categorizer model.
-
-The qualitizer model is used to determine if an issue is categorizable or not.
 The categorizer model is used to determine the area and type of an issue.
 
-## How to use the fine tuned models
+## Github action integration
+
+The tool can be integrated with Github actions to automatically triage issues.
+
+See [githug actions integration](./docs/github-action.md)
+
+## How to use the OpenAI fine tuned models
 
 ### Requirements
 
@@ -76,3 +54,32 @@ mage -v run:triager [issueId]
 Where `[issueId]` is the issue id you want to triage (without the brackets).
 
 This will also update the vector database in case you have new issues in the sqlitedb.
+
+## How does it work?
+
+There are two different implementations of the auto triager, one using Gemini with RAG and one using OpenAI fine tuned models. In practice the OpenAI doesn't need to be fine tuned but it works better.
+
+### Gemini with RAG
+
+The auto-triager uses retrieval-augmented generation (RAG) to generate a long list of historic data
+that is later sent to the remote model for analysis.
+
+These are the steps that follows:
+
+- Reads the issue from Github
+- Converts the issue title/content to an embedded document via [google text embedding api](https://ai.google.dev/gemini-api/docs/embeddings)
+- Queries a pre-built vector database with all the historic issues from Grafana github
+- Puts together a prompt using the historic data, the issue content and the possible labels asking the model to classify the issue
+- Sends the prompt to the model
+- Returns the model's classification JSON output
+
+### OpenAI fine tuned models
+
+The auto-triager has a command to generate a dataset that can later be used to fine tune a model via the UI https://platform.openai.com/finetune/
+
+Two datasets can be generated:
+
+- A dataset for the qualitizer model.
+- A dataset for the categorizer model.
+
+The qualitizer model is used to determine if an issue is categorizable or not.
