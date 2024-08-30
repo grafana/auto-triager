@@ -50,11 +50,11 @@ func generateCategorizerDataset(
 			### End of list of types
 
 			
-			### Start of list of areas
-			This is the list of areas:
+			### Start of list of category labels
+			This is the list of category labels:
 			` + strings.Join(labels, "\n") +
 			`
-			### End of list of areas
+			### End of list of category labels
 			`,
 	}
 
@@ -97,19 +97,19 @@ func generateCategorizerDataset(
 			Issue description:\n\n ` + description + `
 		`})
 
-		areaLabels, typeLabels, err := getLabelsFromIssueLabels(labels)
+		categoryLabels, typeLabels, err := getLabelsFromIssueLabels(labels)
 		if err != nil {
 			continue
 		}
 
 		// do not use examples without labels
-		if len(areaLabels) == 0 || len(typeLabels) == 0 {
+		if len(categoryLabels) == 0 || len(typeLabels) == 0 {
 			continue
 		}
 
 		jsonResponse := `{
 			"id": ` + strconv.Itoa(id) + `,
-			"areaLabel": [` + strings.Join(areaLabels, ",") + `],
+			"categoryLabel": [` + strings.Join(categoryLabels, ",") + `],
 			"typeLabel": [` + strings.Join(typeLabels, ",") + `]
 		}`
 
@@ -168,7 +168,7 @@ func generateCategorizerDataset(
 }
 
 func getLabelsFromIssueLabels(labels string) ([]string, []string, error) {
-	var areaLabels []string
+	var categoryLabels []string
 	var typeLabels []string
 
 	//labels if not empty is a json array
@@ -180,14 +180,14 @@ func getLabelsFromIssueLabels(labels string) ([]string, []string, error) {
 		}
 
 		for _, label := range parsedLabels {
-			if strings.HasPrefix(label, "area/") {
-				areaLabels = append(areaLabels, fmt.Sprintf(`"%s"`, label))
+			if strings.HasPrefix(label, "area/") || strings.HasPrefix(label, "datasource/") {
+				categoryLabels = append(categoryLabels, fmt.Sprintf(`"%s"`, label))
 			} else if strings.HasPrefix(label, "type/") {
 				typeLabels = append(typeLabels, fmt.Sprintf(`"%s"`, label))
 			}
 		}
 	}
 
-	return areaLabels, typeLabels, nil
+	return categoryLabels, typeLabels, nil
 
 }

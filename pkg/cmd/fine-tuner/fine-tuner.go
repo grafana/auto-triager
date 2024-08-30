@@ -45,7 +45,7 @@ var (
 	openAiKey  = os.Getenv("OPENAI_API_KEY")
 	labelsFile = flag.String(
 		"labelsFile",
-		"fixtures/areaLabels.txt",
+		"fixtures/categoryLabels.txt",
 		"Labels file. One label per line",
 	)
 	typesFile = flag.String(

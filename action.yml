@@ -70,7 +70,7 @@ runs:
         echo "Running auto triager"
         go run ${{ github.action_path }}/pkg/cmd/triager-fine-tuned/triager-fine-tuned.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }} -addLabels=true | tee triager_output.txt
         echo "triager_output=$(cat triager_output.txt)" >> $GITHUB_OUTPUT
-        labels=$(cat triager_output.txt | jq -r '.areaLabel + .typeLabel  | map("\\\"\(.)\\\"")| join(",")')
+        labels=$(cat triager_output.txt | jq -r '.categoryLabel + .typeLabel  | map("\\\"\(.)\\\"")| join(",")')
         echo ""
         echo "Final labels: $labels"
       shell: bash
