@@ -66,7 +66,7 @@ func generateCategorizerDataset(
 	fmt.Printf("Generating dataset with %d ids\n", len(ids))
 
 	sql := `
-		SELECT id, title, description, labels FROM issues WHERE processed = 0 AND id IN (` + strings.Join(ids, ",") + `)
+		SELECT id, title, description, labels FROM issues WHERE id IN (` + strings.Join(ids, ",") + `)
 	`
 	fmt.Printf("SQL: %s\n", sql)
 
@@ -91,6 +91,8 @@ func generateCategorizerDataset(
 		if err != nil {
 			return err
 		}
+
+		fmt.Printf("Processing issue %d\n", id)
 		prompt.Messages = append(prompt.Messages, PromptMessage{Role: "user", Content: `
 			Issue ID: ` + strconv.Itoa(id) + `
 			Issue title: ` + title + `
