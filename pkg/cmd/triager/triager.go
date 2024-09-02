@@ -86,13 +86,13 @@ func main() {
 
 	areaLabelsContent, err := os.ReadFile(path.Join("fixtures", "categoryLabels.txt"))
 	if err != nil {
-		log.Fatal("Error reading typeLabels.txt: ", err)
+		log.Fatal("Error reading categoryLabels.txt: ", err)
 	}
 	areaLabels := string(areaLabelsContent)
 
 	typeLabelsContent, err := os.ReadFile(path.Join("fixtures", "typeLabels.txt"))
 	if err != nil {
-		log.Fatal("Error reading areaLabels.txt: ", err)
+		log.Fatal("Error reading typeLabels.txt: ", err)
 	}
 	typeLabels := string(typeLabelsContent)
 

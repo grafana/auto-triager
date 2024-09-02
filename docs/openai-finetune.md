@@ -25,7 +25,7 @@ You need to modify the fixtures files to adjust the ids of the issues you want t
 ### Categorizer
 
 - `fixtures/categorizedIds.txt`: list of the ids of the issues that are correctly categorized. (used by the categorizer model)
-- `fixtures/areaLabels.txt`: The area labels of the issues. (used by the categorizer model)
+- `fixtures/categoryLabels.txt`: The area labels of the issues. (used by the categorizer model)
 - `fixtures/typeLabels.txt`: The type labels of the issues. (used by the categorizer model)
 
 - [optional] `fixtures/categorizedIds.json`: Json file containing the ids, title, description and labels of the issues that are correctly categorized. Will be added on top of the `categorizedIds.txt` file.

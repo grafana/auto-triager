@@ -64,7 +64,7 @@ var (
 	)
 	labelsFile = flag.String(
 		"labelsFile",
-		"fixtures/areaLabels.txt",
+		"fixtures/categoryLabels.txt",
 		"Labels file. One label per line",
 	)
 	typesFile = flag.String(
@@ -86,7 +86,7 @@ func main() {
 
 	areaLabels, err := readFileLines(*labelsFile)
 	if err != nil {
-		logme.FatalF("Error reading areaLabels.txt: %v\n", err)
+		logme.FatalF("Error reading categoryLabels.txt: %v\n", err)
 	}
 
 	typeLabels, err := readFileLines(*typesFile)
