@@ -14,9 +14,9 @@ inputs:
     required: true
 
 outputs:
-  has-internal:
-    description: 'True if the issue has the "internal" label, otherwise false'
-    value: ${{ steps.check_internal.outputs.has-internal }}
+  labels:
+    description: "The labels of the issue"
+    value: ${{ steps.fetch-facts.outputs.labels }}
 
 runs:
   using: "composite"

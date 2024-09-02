@@ -3,3 +3,4 @@ bin
 *.sqlite
 vector.db
 **/*.jsonl
+out
