@@ -20,7 +20,7 @@ inputs:
 outputs:
   triage_labels:
     description: "The labels of the issue"
-    value: ${{ steps.fetch-facts.outputs.labels }}
+    value: ${{ steps.triager.outputs.triage_labels }}
 
 runs:
   using: "composite"
