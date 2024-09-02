@@ -44,7 +44,6 @@ runs:
         echo "Fetched labels: $labels"
         echo "Fetched state: $state"
 
-        echo "labels=$labels" >> $GITHUB_OUTPUT
         echo "state=$state" >> $GITHUB_OUTPUT
       shell: bash
 
