@@ -84,7 +84,7 @@ func main() {
 		fmt.Println(":: Done updating vectors")
 	}
 
-	areaLabelsContent, err := os.ReadFile(path.Join("fixtures", "areaLabels.txt"))
+	areaLabelsContent, err := os.ReadFile(path.Join("fixtures", "categoryLabels.txt"))
 	if err != nil {
 		log.Fatal("Error reading typeLabels.txt: ", err)
 	}
