@@ -18,7 +18,7 @@ inputs:
     default: "false"
 
 outputs:
-  labels:
+  triage_labels:
     description: "The labels of the issue"
     value: ${{ steps.fetch-facts.outputs.labels }}
 
@@ -77,6 +77,7 @@ runs:
         labels=$(cat triager_output.txt | jq -r '.categoryLabel + .typeLabel  | map("\\\"\(.)\\\"")| join(",")')
         echo ""
         echo "Final labels: $labels"
+        echo "triage_labels=$labels" >> $GITHUB_OUTPUT
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
