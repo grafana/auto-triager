@@ -1,59 +1,77 @@
-## Populating the vector database
+# Populate the vector database
 
-> [!NOTE]
-> This is only needed if you want to use the gemini with RAG implementation.
-> If you want to use the fine tuned models you can skip this step.
+If you want to use `auto-triager` with the Gemini with Rag implementation, you must first populate a vector database with GitHub issues.
 
-### Requirements
+If you want to use `auto-triager` with the OpenAI implementation, you don't need to follow these steps.
+
+## Requirements
 
 - Go 1.22.3 or higher installed
 - [Mage](https://magefile.org/)
-- A Github personal access token with read access to public repos in the `GH_TOKEN` env var
-- A Google Cloud Platform API key with the text embedding api enabled
+- The `GH_TOKEN` environment variable set to a GitHub personal access token with at least read access to public repositories.
 
-### Scraping all the issues from Grafana github
+  If you want the tool to also update the issue with the generated labels you can pass the `-addLabels=true` option.
+  To update issues with labels, your token must also have the permissions to add labels to issues.
 
-To scrap all the issues from github a scrapper is included in the tool.
+  To create the token, refer to [Create a GitHub personal access token](#create-a-GitHub-personal-access-token).
 
-#### Create a personal github token
+- The `GEMINI_API_KEY` environment variable set to a Google Cloud Platform API key with the text embedding API enabled.
 
-You will first have to create a personal github token with "read" access to public repos.
+## Create a GitHub personal access token
 
-- Go to [https://github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta)
-- Generate "new token". Give it a name, expiration date (up to you). Repository Access: Public repositories (read only). Save it.
-- Export this token in your terminal as `GH_TOKEN`. e.g. : `export GH_TOKEN=YOUR_TOKEN` or pass it when you run the utility
+To create a GitHub personal access token with the necessary permissions:
 
-#### Run the issue scrapper
+1. Browse to the [Fine-grained personal access tokens GitHub settings page](https://github.com/settings/tokens?type=beta)
+1. Click **Generate new token**.
+1. Fill out the **Name**, **Expiration**, and **Description** fields.
+1. Set **Repository Access** to **Public repositories (read only)**
+1. Click **Generate token**
 
-- Clone this repository
-- Delete the file `github-data.sqlite` if it exists
-- Run `mage run:scrapper`. You can also run it as `GH_TOKEN=YOUR_TOKEN mage run:scrapper` to pass your token.
-- Wait.... wait... wait... Maybe get a coffee, or two.
+To use the token, export the it as the value for the `GH_TOKEN` environment variable.
+For example:
 
-If no errors, you should see a file called `github-data.sqlite` in the current directory. It should be
-around 14GB. You can see the db with a sqlite db viewer like [sqlitebrowser](https://sqlitebrowser.org/)
+```bash
+export GH_TOKEN=<TOKEN>
+```
 
-#### Update the vector database.
+## Scrape all the issues from the Grafana GitHub organization
 
-To update the vector db you need to run the triager tool with the `-updateVectors=true` flag.
-Mage has a build target already including that flag.
+To scrape all the issues from the Grafana GitHub organization, a scraper is included in the tool.
+To run the issue scraper:
 
-- Make sure your github-data.sqlite file exists and it is populated.
-- Make sure you have your `GEMINI_API_KEY` env var set or pass it to the command..
-- run `mage run:triager [issueId]` e.g.: `mage run:triager 89449`
+1. Clone this repository.
+1. Delete the file `github-data.sqlite` if it exists.
+1. If you've exported the `GH_TOKEN` environment variable, run `mage run:scrapper`.
+   Otherwise, to run the command with your token, run `GH_TOKEN=<TOKEN> mage run:scrapper`.
+1. Wait for the process to complete.
+   It can take a long time.
 
-Alternativelely you can run the triager directly:
+If the scraper runs without error, it creates a file called `github-data.sqlite` in your current directory.
+It should be around 14 GB in size.
+You can browse the database with an SQLite database viewer like [DB Browser for SQLite (DB4S)](https://sqlitebrowser.org/).
 
-Run with `-h` to see the available flags
+### Update the vector database
+
+To update the vector database you need to run `auto-triager` with the `-updateVectors=true` option.
+Mage has a build target that already includes that option.
+
+- Ensure the `github-data.sqlite` file exists and is populated.
+  To populate the database file, refer to [Scrape all the issues from the Grafana GitHub organization](#scrape-all-the-issues-from-the-grafana-github-organization)
+- Set the `GEMINI_API_KEY` environment variable with your Gemini API key.
+- Run `mage run:triager <ISSUE ID>`.
+
+Or you can run `auto-triager` directly:
+
+Run with `-h` to see the available options.
 
 ```bash
 go run ./pkg/cmd/triager/triager.go -h
 ```
 
-Example of running the triager directly:
+Example of running `auto-triager` directly:
 
 ```bash
 go run ./pkg/cmd/triager/triager.go -issueId 89449 -updateVectors=true
 ```
 
-Running with `-updateVectors=trur` will only update new entries in the sqlitedb.
+Running `auto-triager` with `-updateVectors=true` only updates new entries in the vector database.
