@@ -40,7 +40,7 @@ var (
 	categorizerModel = flag.String(
 		"categorizerModel",
 		// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:auto-triage:9ssSMoCP", // 800k training tokens
-		"ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:auto-triage:9ss5MNR0", // 400k training tokens
+		"ft:gpt-4o-2024-08-06:grafana-labs-live-features:auto-triage-categorizer:A1sINk1E", // 400k training tokens
 		// "ft:gpt-4o-2024-08-06:grafana-labs-experiments-exploration:issue-auto-triager:9yxdY5IU", // 400k training tokens gpt-4o
 		"Model to use",
 	)
