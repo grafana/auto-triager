@@ -153,6 +153,7 @@ func (Run) TriagerFineTuned(ctx context.Context, id string) error {
 
 	command := []string{
 		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager-fine-tuned",
+		"-categorizerModel=ft:gpt-4o-2024-08-06:grafana-labs-experiments-exploration:auto-triage-categorizer:A1s2SnZR",
 		"-issueId=" + id,
 	}
 

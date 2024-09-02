@@ -26,7 +26,7 @@ type QualityVeredict struct {
 
 type CategorizedIssue struct {
 	ID              interface{} `json:"id"`
-	AreaLabel       []string    `json:"areaLabel"`
+	CategoryLabel   []string    `json:"categoryLabel"`
 	TypeLabel       []string    `json:"typeLabel"`
 	IsCategorizable bool        `json:"isCategorizable"`
 	Remarks         string      `json:"remarks"`
@@ -39,9 +39,7 @@ var (
 	repo             = flag.String("repo", "grafana/grafana", "Github repo to push the issue to")
 	categorizerModel = flag.String(
 		"categorizerModel",
-		// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:auto-triage:9ssSMoCP", // 800k training tokens
-		"ft:gpt-4o-2024-08-06:grafana-labs-live-features:auto-triage-categorizer:A1sINk1E", // 400k training tokens
-		// "ft:gpt-4o-2024-08-06:grafana-labs-experiments-exploration:issue-auto-triager:9yxdY5IU", // 400k training tokens gpt-4o
+		"ft:gpt-4o-2024-08-06:grafana-labs-live-features:auto-triage-categorizer:A1sINk1E", // live model
 		"Model to use",
 	)
 	// qualitizerModel = flag.String(
@@ -84,7 +82,7 @@ func main() {
 		logme.FatalF("Error validating flags: %v\n", err)
 	}
 
-	areaLabels, err := readFileLines(*labelsFile)
+	categoryLabels, err := readFileLines(*labelsFile)
 	if err != nil {
 		logme.FatalF("Error reading categoryLabels.txt: %v\n", err)
 	}
@@ -124,7 +122,7 @@ func main() {
 	category := CategorizedIssue{}
 
 	for leftRetries > 0 {
-		category, err = getIssueCategory(&issueData, categorizerModel, typeLabels, areaLabels)
+		category, err = getIssueCategory(&issueData, categorizerModel, typeLabels, categoryLabels)
 		if err != nil || category.ID == 0 || category.ID == nil {
 			retriesLeft := leftRetries - 1
 			logme.ErrorF("Error categorizing issue: %v\n", err)
@@ -147,7 +145,7 @@ func main() {
 		logme.InfoF("Adding labels to issue")
 
 		labels := []string{}
-		labels = append(labels, category.AreaLabel...)
+		labels = append(labels, category.CategoryLabel...)
 		labels = append(labels, category.TypeLabel...)
 		err = github.AddLabelsToIssue(*repo, *issueId, labels)
 		if err != nil {
@@ -202,7 +200,7 @@ func getIssueCategory(
 	issueData *github.Issue,
 	model *string,
 	typeLabels []string,
-	areaLabels []string,
+	categoryLabels []string,
 ) (CategorizedIssue, error) {
 	var categoryzerPrompt = prompts.CategorySystemPrompt + `
 
@@ -214,7 +212,7 @@ func getIssueCategory(
 			
 			### Start of list of areas
 			This is the list of areas:
-			` + strings.Join(areaLabels, "\n") +
+			` + strings.Join(categoryLabels, "\n") +
 		`
 			### End of list of areas
 			`
