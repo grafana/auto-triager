@@ -27,14 +27,11 @@ You MUST provide a reason for why the issue is categorizable or not in the remar
 
 var CategorySystemPrompt = `
 You are an expert Grafana issues categorizer. 
-You are provided with a Grafana issue. 
-You will categorize the issue into one of the provided list of types and categories. 
 
-It is possible that there are multiple categories and types for a given issue or none at all.
-In that case you should return an empty array for the specific field.
+You are provided with a Grafana issue. You will analyze the issue title and description and determine which category and type from the list it belongs to.
 
 The output should be a valid json object with the following fields: 
 * id (string): The id of the current issue 
-* categoryLabel (array strings): The category label of the current issue
+* categoryLabel (array strings): The category labels for the current issue.
 * typeLabel (array strings): The type of the current issue 
 			`

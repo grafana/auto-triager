@@ -39,7 +39,8 @@ var (
 	repo             = flag.String("repo", "grafana/grafana", "Github repo to push the issue to")
 	categorizerModel = flag.String(
 		"categorizerModel",
-		"ft:gpt-4o-2024-08-06:grafana-labs-live-features:auto-triage-categorizer:A1sINk1E", // live model
+		// "ft:gpt-4o-2024-08-06:grafana-labs-live-features:auto-triage-categorizer:A1sINk1E", // live model
+		"gpt-4o", // regular model from openai
 		"Model to use",
 	)
 	// qualitizerModel = flag.String(
@@ -202,20 +203,19 @@ func getIssueCategory(
 	typeLabels []string,
 	categoryLabels []string,
 ) (CategorizedIssue, error) {
-	var categoryzerPrompt = prompts.CategorySystemPrompt + `
+	var categoryzerPrompt = prompts.CategorySystemPrompt
 
-			### Start of list of types
-			` + strings.Join(typeLabels, "\n") +
-		`
-			### End of list of types
-
-			
-			### Start of list of areas
-			This is the list of areas:
-			` + strings.Join(categoryLabels, "\n") +
-		`
-			### End of list of areas
-			`
+	// 	### Start of list of types
+	// 	` + strings.Join(typeLabels, "\n") +
+	// `
+	// 	### End of list of types
+	//
+	//
+	// 	### Start of list of categories
+	// 	` + strings.Join(categoryLabels, "\n") +
+	// `
+	// 	### End of list of categories
+	// `
 
 	// calculate the number of tokens
 	enc, err := tokenizer.Get(tokenizer.Cl100kBase)
@@ -249,7 +249,13 @@ func getIssueCategory(
 					  Issue ID: ` + strconv.Itoa(*issueId) + `
 					  Issue title: ` + issueData.Title + `
 					  Issue description:\n\n ` + issueData.Body + `
-					`,
+
+						Which category and type from the following list do you think this issue belongs to?
+
+					List of categories:
+					` + strings.Join(categoryLabels, "\n") +
+						`
+					List of types: ` + strings.Join(typeLabels, "\n"),
 				},
 			},
 		},
