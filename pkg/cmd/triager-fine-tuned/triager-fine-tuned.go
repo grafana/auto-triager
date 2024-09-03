@@ -250,7 +250,7 @@ func getIssueCategory(
 					  Issue title: ` + issueData.Title + `
 					  Issue description:\n\n ` + issueData.Body + `
 
-						Which category and type from the following list do you think this issue belongs to?
+						According to the following list, which category and type do you think this issue belongs to?
 
 					List of categories:
 					` + strings.Join(categoryLabels, "\n") +
