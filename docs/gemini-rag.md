@@ -41,8 +41,8 @@ To run the issue scraper:
 
 1. Clone this repository.
 1. Delete the file `github-data.sqlite` if it exists.
-1. If you've exported the `GH_TOKEN` environment variable, run `mage run:scrapper`.
-   Otherwise, to run the command with your token, run `GH_TOKEN=<TOKEN> mage run:scrapper`.
+1. If you've exported the `GH_TOKEN` environment variable, run `mage run:scraper`.
+   Otherwise, to run the command with your token, run `GH_TOKEN=<TOKEN> mage run:scraper`.
 1. Wait for the process to complete.
    It can take a long time.
 
