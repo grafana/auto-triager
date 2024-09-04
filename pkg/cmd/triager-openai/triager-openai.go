@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -133,6 +134,27 @@ func main() {
 			continue
 		}
 
+		// filter out the categories that are not in the categoryLabels
+		realCategories := []string{}
+		for _, category := range category.CategoryLabel {
+			if slices.Contains(categoryLabels, category) {
+				realCategories = append(realCategories, category)
+			} else {
+				logme.DebugF("Category %s is not in categoryLabels. Skipping", category)
+			}
+		}
+
+		if len(realCategories) == 0 {
+			logme.ErrorF("Error categorizing issue: Model returned only false categories")
+			retriesLeft := leftRetries - 1
+			logme.InfoF("Retrying in 1 second. %d retries left\n", retriesLeft)
+			time.Sleep(time.Second)
+			leftRetries = retriesLeft
+			continue
+		}
+
+		category.CategoryLabel = realCategories
+
 		break
 	}
 
@@ -204,18 +226,6 @@ func getIssueCategory(
 	categoryLabels []string,
 ) (CategorizedIssue, error) {
 	var categoryzerPrompt = prompts.CategorySystemPrompt
-
-	// 	### Start of list of types
-	// 	` + strings.Join(typeLabels, "\n") +
-	// `
-	// 	### End of list of types
-	//
-	//
-	// 	### Start of list of categories
-	// 	` + strings.Join(categoryLabels, "\n") +
-	// `
-	// 	### End of list of categories
-	// `
 
 	// calculate the number of tokens
 	enc, err := tokenizer.Get(tokenizer.Cl100kBase)
