@@ -110,3 +110,4 @@ datasource/OpenSearch
 datasource/GoogleSheets
 datasource/GitHub
 datasource/MySQL
+type/build-packaging
