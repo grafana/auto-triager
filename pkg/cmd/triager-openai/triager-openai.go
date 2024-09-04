@@ -59,7 +59,7 @@ var (
 	)
 	retries = flag.Int(
 		"retries",
-		3,
+		5,
 		"Number of retries to use when categorizing an issue",
 	)
 	labelsFile = flag.String(
