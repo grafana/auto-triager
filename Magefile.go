@@ -88,7 +88,7 @@ func (Build) Commands(ctx context.Context) error {
 	return nil
 }
 
-func (Run) Scrapper() error {
+func (Run) Scraper() error {
 	mg.Deps(
 		Build.Commands,
 	)
@@ -99,7 +99,7 @@ func (Run) Scrapper() error {
 	}
 
 	command := []string{
-		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/scrapper",
+		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/scraper",
 	}
 
 	return sh.RunV(command[0], command[1:]...)
