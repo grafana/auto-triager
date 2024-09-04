@@ -106,13 +106,13 @@ func (Run) Scraper() error {
 
 }
 
-func (Run) Triager(ctx context.Context, id string) error {
-	mg.Deps(
-		Build.Commands,
-	)
+func (Run) TriagerGemini(ctx context.Context, id string) error {
+	mg.Deps(func() error {
+		return buildCommand("triager-gemini", runtime.GOOS+"_"+runtime.GOARCH)
+	})
 
 	command := []string{
-		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager",
+		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager-gemini",
 		"-issueId=" + id,
 		"-updateVectors=true",
 		"-vectorDb=vector.db",
@@ -142,9 +142,9 @@ func (Run) FineTuner(ctx context.Context, cmd string) error {
 	return sh.RunV(command[0], command[1:]...)
 }
 
-func (Run) TriagerFineTuned(ctx context.Context, id string) error {
+func (Run) TriagerOpenAI(ctx context.Context, id string) error {
 	mg.Deps(func() error {
-		return buildCommand("triager-fine-tuned", runtime.GOOS+"_"+runtime.GOARCH)
+		return buildCommand("triager-openai", runtime.GOOS+"_"+runtime.GOARCH)
 	})
 
 	env := map[string]string{
@@ -152,7 +152,7 @@ func (Run) TriagerFineTuned(ctx context.Context, id string) error {
 	}
 
 	command := []string{
-		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager-fine-tuned",
+		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager-openai",
 		// "-categorizerModel=ft:gpt-4o-2024-08-06:grafana-labs-experiments-exploration:auto-triage-categorizer:A1s2SnZR",
 		"-issueId=" + id,
 	}
