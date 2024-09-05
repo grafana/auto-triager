@@ -86,7 +86,6 @@ area/streaming
 area/frontend/login
 datasource/Parca
 datasource/CSV
-area/panel
 datagrid
 area/panel/dashboard-list
 team/grafana-aws-datasources
