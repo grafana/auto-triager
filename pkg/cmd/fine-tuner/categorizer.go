@@ -13,6 +13,13 @@ import (
 	"github.com/tiktoken-go/tokenizer"
 )
 
+type JsonPrompt struct {
+	Question string `json:"question"`
+	Context  string `json:"context"`
+	Answer   string `json:"answer"`
+	System   string `json:"system"`
+}
+
 func generateCategorizerDataset(
 	db *sql.DB,
 	labelsFile string,
@@ -68,6 +75,8 @@ func generateCategorizerDataset(
 	var totalTokens int
 	var totalIssues = 0
 
+	jsonPrompts := []JsonPrompt{}
+
 	for rows.Next() {
 		var prompt PromptTemplate
 		prompt.Messages = append(prompt.Messages, categorizerSystemPrompt)
@@ -120,6 +129,29 @@ func generateCategorizerDataset(
 			len(categoryLabels) != len(typeLabels) {
 			continue
 		}
+
+		jsonPrompt := JsonPrompt{
+			Question: `
+						Issue ID: ` + strconv.Itoa(id) + `
+						Issue title: ` + title + `
+						Issue description:\n\n ` + description + `
+
+						According to the following list, which category and type do you think this issue belongs to?
+			`,
+			Context: `
+						List of categories:
+						` + strings.Join(categories, "\n") +
+				`
+						List of types: ` + strings.Join(types, "\n"),
+			Answer: `{
+				"id": ` + strconv.Itoa(id) + `,
+				"categoryLabel":` + stringArrayToJsonArray(categoryLabels) + `,
+				"typeLabel": ` + stringArrayToJsonArray(typeLabels) + `
+			}`,
+			System: prompts.CategorySystemPrompt,
+		}
+
+		jsonPrompts = append(jsonPrompts, jsonPrompt)
 
 		jsonResponse := `{
 			"id": ` + strconv.Itoa(id) + `,
@@ -174,6 +206,16 @@ func generateCategorizerDataset(
 	}
 
 	err = os.WriteFile(outFile, []byte(finalContent), 0644)
+	if err != nil {
+		return err
+	}
+
+	jsonFinalContent, err := json.Marshal(jsonPrompts)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(outFile+".json", []byte(jsonFinalContent), 0644)
 	if err != nil {
 		return err
 	}
