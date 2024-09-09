@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -25,7 +26,7 @@ func generateCategorizerDataset(
 		return err
 	}
 
-	labels, err := readFileLines(labelsFile, 0)
+	categories, err := readFileLines(labelsFile, 0)
 	if err != nil {
 		return err
 	}
@@ -41,21 +42,8 @@ func generateCategorizerDataset(
 	}
 
 	var categorizerSystemPrompt = PromptMessage{
-		Role: "system",
-		Content: prompts.CategorySystemPrompt + `
-
-			### Start of list of types
-			` + strings.Join(types, "\n") +
-			`
-			### End of list of types
-
-			
-			### Start of list of category labels
-			This is the list of category labels:
-			` + strings.Join(labels, "\n") +
-			`
-			### End of list of category labels
-			`,
+		Role:    "system",
+		Content: prompts.CategorySystemPrompt,
 	}
 
 	ids, err := readFileLines(idsFile, 0)
@@ -97,22 +85,46 @@ func generateCategorizerDataset(
 			Issue ID: ` + strconv.Itoa(id) + `
 			Issue title: ` + title + `
 			Issue description:\n\n ` + description + `
-		`})
 
-		categoryLabels, typeLabels, err := getLabelsFromIssueLabels(labels)
+			According to the following list, which category and type do you think this issue belongs to?
+
+					List of categories:
+					` + strings.Join(categories, "\n") +
+			`
+					List of types: ` + strings.Join(types, "\n"),
+		})
+
+		preCategoryLabels, preTypeLabels, err := getLabelsFromIssueLabels(labels)
 		if err != nil {
 			continue
 		}
 
+		// filter out the categories that are not in the categoryLabels
+		categoryLabels := []string{}
+		for _, category := range preCategoryLabels {
+			if slices.Contains(categories, category) {
+				categoryLabels = append(categoryLabels, category)
+			}
+		}
+
+		// filter out the types that are not in the typeLabels
+		typeLabels := []string{}
+		for _, typeLabel := range preTypeLabels {
+			if slices.Contains(types, typeLabel) {
+				typeLabels = append(typeLabels, typeLabel)
+			}
+		}
+
 		// do not use examples without labels
-		if len(categoryLabels) == 0 || len(typeLabels) == 0 {
+		if len(categoryLabels) == 0 || len(typeLabels) == 0 ||
+			len(categoryLabels) != len(typeLabels) {
 			continue
 		}
 
 		jsonResponse := `{
 			"id": ` + strconv.Itoa(id) + `,
-			"categoryLabel": [` + strings.Join(categoryLabels, ",") + `],
-			"typeLabel": [` + strings.Join(typeLabels, ",") + `]
+			"categoryLabel":` + stringArrayToJsonArray(categoryLabels) + `,
+			"typeLabel": ` + stringArrayToJsonArray(typeLabels) + `
 		}`
 
 		jsonResponse = strings.ReplaceAll(jsonResponse, "\n", "")
@@ -183,13 +195,24 @@ func getLabelsFromIssueLabels(labels string) ([]string, []string, error) {
 
 		for _, label := range parsedLabels {
 			if strings.HasPrefix(label, "area/") || strings.HasPrefix(label, "datasource/") {
-				categoryLabels = append(categoryLabels, fmt.Sprintf(`"%s"`, label))
+				categoryLabels = append(categoryLabels, label)
 			} else if strings.HasPrefix(label, "type/") {
-				typeLabels = append(typeLabels, fmt.Sprintf(`"%s"`, label))
+				typeLabels = append(typeLabels, label)
 			}
 		}
 	}
 
 	return categoryLabels, typeLabels, nil
 
+}
+
+func stringArrayToJsonArray(array []string) string {
+	if len(array) == 0 {
+		return ""
+	}
+	var jsonArray []string
+	for _, label := range array {
+		jsonArray = append(jsonArray, fmt.Sprintf(`"%s"`, label))
+	}
+	return fmt.Sprintf("[%s]", strings.Join(jsonArray, ","))
 }
