@@ -170,6 +170,7 @@ func main() {
 		labels := []string{}
 		labels = append(labels, category.CategoryLabel...)
 		labels = append(labels, category.TypeLabel...)
+		labels = append(labels, "automated-triage")
 		err = github.AddLabelsToIssue(*repo, *issueId, labels)
 		if err != nil {
 			logme.FatalF("Error adding labels to issue: %v\n", err)
