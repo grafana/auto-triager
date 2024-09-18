@@ -43,7 +43,7 @@ runs:
       shell: bash
 
     - name: check if state is open and no labels are assigned
-      id: check-triage
+      id: check-state
       run: |
         if [ "${{ steps.fetch-facts.outputs.state }}" = "open" ] && [ -z "${{ steps.fetch-facts.outputs.labels }}" ]; then
           echo "should_triage=true" >> $GITHUB_OUTPUT
