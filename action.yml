@@ -31,7 +31,7 @@ runs:
         repo="${{ github.repository }}"
         issue_info=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
                 "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}")
-        labels=$(echo "$issue_info" | jq -r '.labels[] | .name')
+        labels=$(echo "$issue_info" | jq -r '.labels | map(.name) | join(",")')
         state=$(echo "$issue_info" | jq -r '.state')
 
         echo "Issue number: ${{ inputs.issue_number }}"
