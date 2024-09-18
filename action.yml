@@ -1,6 +1,6 @@
 name: "Check Issue Label"
 
-description: 'Checks if an issue has the "internal" label and sets outputs or prints messages accordingly.'
+description: "Given a github issue for a Grafana project, checks if the issue is triageable and if so, adds the area and type labels to the issue."
 
 inputs:
   token:
@@ -25,19 +25,13 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Set variables
-      run: |
-        echo "INTERNAL_LABEL=internal" >> $GITHUB_ENV
-      shell: bash
-
-    # To prevent triaging issues that are tagged as internal or have been closed quickly
     - name: Fetch issue labels and state
       id: fetch-facts
       run: |
         repo="${{ github.repository }}"
         issue_info=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
                 "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}")
-        labels=$(echo "$issue_info" | jq -r '.labels[] | select(.name == "${{ env.INTERNAL_LABEL }}") | .name')
+        labels=$(echo "$issue_info" | jq -r '.labels[] | .name')
         state=$(echo "$issue_info" | jq -r '.state')
 
         echo "Issue number: ${{ inputs.issue_number }}"
@@ -48,13 +42,12 @@ runs:
         echo "state=$state" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: check if state is not open
-      id: check-state
+    - name: check if state is open and no labels are assigned
+      id: check-triage
       run: |
-        if [ "${{ steps.fetch-facts.outputs.state }}" = "open" ]; then
+        if [ "${{ steps.fetch-facts.outputs.state }}" = "open" ] && [ -z "${{ steps.fetch-facts.outputs.labels }}" ]; then
           echo "should_triage=true" >> $GITHUB_OUTPUT
         else
-          echo "The issue is not open or has the internal label. Finishing the job."
           echo "should_triage=false" >> $GITHUB_OUTPUT
         fi
       shell: bash
