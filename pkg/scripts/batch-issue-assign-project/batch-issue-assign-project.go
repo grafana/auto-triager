@@ -37,7 +37,7 @@ func main() {
 	genGithubToken, err := github.GetInstallationToken(
 		996463,
 		"pem-file-path",
-		54801657,
+		1234,
 	)
 
 	if err != nil {
