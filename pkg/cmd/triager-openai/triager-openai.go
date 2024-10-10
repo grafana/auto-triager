@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"slices"
 	"strconv"
@@ -16,6 +17,7 @@ import (
 	"github.com/grafana/auto-triage/pkg/logme"
 	"github.com/grafana/auto-triage/pkg/prompts"
 	"github.com/sashabaranov/go-openai"
+	"github.com/sashabaranov/go-openai/jsonschema"
 	"github.com/tiktoken-go/tokenizer"
 )
 
@@ -241,14 +243,29 @@ func getIssueCategory(
 
 	logme.DebugF("Tokens: %d\n", len(tokens))
 
+	// set up structured output schema
+	type Result struct {
+		ID              int      `json:"id"`
+		IsCategorizable bool     `json:"isCategorizable"`
+		Remarks         string   `json:"remarks"`
+		CategoryLabel   []string `json:"categoryLabel"`
+		TypeLabel       []string `json:"typeLabel"`
+	}
+
+	var result Result
+	schema, err := jsonschema.GenerateSchemaForType(result)
+	if err != nil {
+		log.Fatalf("GenerateSchemaForType error: %v", err)
+	}
+
 	client := openai.NewClient(openAiKey)
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
 			Model: *model,
-			ResponseFormat: &openai.ChatCompletionResponseFormat{
-				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
-			},
+			// ResponseFormat: &openai.ChatCompletionResponseFormat{
+			// 	Type: openai.ChatCompletionResponseFormatTypeJSONObject,
+			// },
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role:    openai.ChatMessageRoleSystem,
@@ -267,6 +284,14 @@ func getIssueCategory(
 					` + strings.Join(categoryLabels, "\n") +
 						`
 					List of types: ` + strings.Join(typeLabels, "\n"),
+				},
+			},
+			ResponseFormat: &openai.ChatCompletionResponseFormat{
+				Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
+				JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
+					Name:   "math_reasoning",
+					Schema: schema,
+					Strict: true,
 				},
 			},
 		},

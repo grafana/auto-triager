@@ -3,12 +3,13 @@ module github.com/grafana/auto-triage
 go 1.22.3
 
 require (
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/generative-ai-go v0.14.0
 	github.com/magefile/mage v1.15.0
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/philippgille/chromem-go v0.6.0
 	github.com/playwright-community/playwright-go v0.4501.1
-	github.com/sashabaranov/go-openai v1.27.1
+	github.com/sashabaranov/go-openai v1.32.0
 	github.com/tiktoken-go/tokenizer v0.1.1
 	google.golang.org/api v0.185.0
 )
@@ -27,14 +28,12 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.4 // indirect
-	github.com/mrz1836/go-sanitize v1.3.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.51.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.51.0 // indirect
