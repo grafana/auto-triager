@@ -1,8 +1,6 @@
-# Automatically triage Grafana issues with Gemini and OpenAI (fine tuned models)
+# Automatically triage a Github repository issue with OpenAI models
 
-`auto-triager` automatically triages Grafana issues using OpenAI GPT or Google Gemini.
-
-It uses the categorizer model to determine the area and type of an issue.
+`auto-triager` automatically triages Grafana issues using OpenAI Models
 
 ## GitHub action integration
 
@@ -27,68 +25,48 @@ For more information, refer to [GitHub Action integration](./docs/github-action.
 To run `auto-triager`, use the following command:
 
 ```bash
-mage -v run:triagerFineTuned <ISSUE ID>
+mage -v run:triagerOpenAI <ISSUE ID>
 ```
 
 Where _`ISSUE ID`_ is the issue ID you want to triage.
 
-## How to use the Gemini with RAG implementation
+## Options
 
-> [!IMPORTANT]
-> You must have the vector database generated before you can use the Gemini with RAG implementation.
-> See the relevant section on how to generate it.
-> Or you can ask a colleague to provide you with a pre-built vector db.
-
-### Requirements
-
-- Go 1.22.3 or higher installed
-- [Mage](https://magefile.org/)
-- The `GH_TOKEN` environment variable set to a GitHub personal access token with at least read access to public repositories.
-
-  If you want the tool to also update the issue with the generated labels you can pass the `-addLabels=true` flag.
-  To update issues with labels, your token must also have the permissions to add labels to issues.
-
-- The `GEMINI_API_KEY` environment variable set to a Google Cloud Platform API key with the text embedding API enabled.
-- A vector database populated with GitHub issues.
-  To populate the database, refer to [Populate the vector database](./docs/gemini-rag.md)
-
-### Run `auto-triager`
-
-To run `auto-triager`, use the following command:
-
-```bash
-mage -v run:triagerFineTuned <ISSUE ID>
 ```
+Usage of ./bin/linux_amd64/triager-openai:
+  -addLabels
+        Add labels to the issue in the repo via the GitHub API
+  -categorizerModel string
+        Model to use (default "gpt-4o")
+  -issueId int
+        Github Issue ID (only the number)
+  -labelsFile string
+        Labels file. One label per line (default "fixtures/categoryLabels.txt")
+  -repo string
+        Github repo to push the issue to (default "grafana/grafana")
+  -retries int
+        Number of retries to use when categorizing an issue (default 5)
+  -typesFile string
+        Types file. One label per line (default "fixtures/typeLabels.txt")
 
-Where _`ISSUE ID`_ is the issue ID you want to triage.
-
-This also updates the vector database in case you have new issues in the SQLite database.
+```
 
 ## How does it work?
 
-There are two different implementations of the auto-triager, one using Gemini with RAG, and one using OpenAI fine-tuned models.
-The OpenAI implementation doesn't have to be fine tuned but it works better if it is.
+```mermaid
+flowchart TD
+    Start([Tool Called]) --> ReadIssue[Read GitHub Issue]
+    ReadIssue --> |"-issueId from -repo"| ConsultLLM[Consult LLM]
 
-### Gemini with RAG
+    subgraph LLM Process
+        ConsultLLM --> |"-prompt\n-labelsFile\n-typesFile"| ModelProcess[Process with Model]
+        ModelProcess --> Categories[Return Categories]
+    end
 
-`auto-triager` uses retrieval-augmented generation (RAG) to generate a long list of historic data that's later sent to the remote model for analysis.
-
-These are the steps that follows:
-
-1. Read the issue from GitHub.
-1. Convert the issue title and content to an embedded document using the [Google text embedding API](https://ai.google.dev/gemini-api/docs/embeddings).
-1. Query a pre-built vector database with all the historic issues from Grafana GitHub.
-1. Create a prompt using the historic data, the issue content, and the possible labels asking the model to classify the issue.
-1. Send the prompt to the model.
-1. Return the model's classification JSON output.
-
-### OpenAI fine-tuned models
-
-`auto-triager` has a command to generate a dataset that you can use later to fine tune a model in the [UI](https://platform.openai.com/finetune/).
-
-You can generate two datasets:
-
-- A dataset for the qualitizer model.
-- A dataset for the categorizer model.
-
-The qualitizer model is used to determine if an issue is categorizable or not.
+    Categories --> AddLabels{"-addLabels\npassed?"}
+    AddLabels --> |Yes| GHToken{Valid\nGH_TOKEN?}
+    GHToken --> |Yes| AssignLabels[Assign Labels to Issue]
+    GHToken --> |No| End([End])
+    AddLabels --> |No| End
+    AssignLabels --> End
+```
