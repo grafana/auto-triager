@@ -66,7 +66,8 @@ flowchart TD
     Categories --> AddLabels{"-addLabels\npassed?"}
     AddLabels --> |Yes| GHToken{Valid\nGH_TOKEN?}
     GHToken --> |Yes| AssignLabels[Assign Labels to Issue]
-    GHToken --> |No| End([End])
-    AddLabels --> |No| End
-    AssignLabels --> End
+    GHToken --> |No| PrintJSON[Print Result JSON]
+    AddLabels --> |No| PrintJSON
+    AssignLabels --> PrintJSON
+    PrintJSON --> End([End])
 ```
