@@ -1,6 +1,6 @@
 name: "Check Issue Label"
 
-description: "Given a github issue for a Grafana project, checks if the issue is triageable and if so, adds the area and type labels to the issue."
+description: "Given a github issue for a github repository, checks if the issue is triageable and if so, adds the area and type labels to the issue."
 
 inputs:
   token:

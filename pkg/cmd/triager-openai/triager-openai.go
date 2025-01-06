@@ -42,18 +42,9 @@ var (
 	repo             = flag.String("repo", "grafana/grafana", "Github repo to push the issue to")
 	categorizerModel = flag.String(
 		"categorizerModel",
-		// "ft:gpt-4o-2024-08-06:grafana-labs-live-features:auto-triage-categorizer:A1sINk1E", // live model
 		"gpt-4o", // regular model from openai
 		"Model to use",
 	)
-	// qualitizerModel = flag.String(
-	// 	"qualitizerModel",
-	// 	// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tDkW7Kq", // first training. Bad model
-	// 	// "gpt-4o", // regular model from openai, produces remarks but it not fine tuned
-	// 	// "ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tW2EBhH", // good. trained with a larger dataset but doesn't produce remarks
-	// 	"ft:gpt-4o-mini-2024-07-18:grafana-labs-experiments-exploration:issue-qualitizer:9tWTKBHh", // good. trained with a larger dataset. might produce remarks but most of the time it doesn't
-	// 	"Model to use",
-	// )
 	addLabels = flag.Bool(
 		"addLabels",
 		false,
@@ -311,45 +302,3 @@ func getIssueCategory(
 	return category, nil
 
 }
-
-// func getIssueIsCategorizable(issueData *github.Issue, model *string) (QualityVeredict, error) {
-// 	client := openai.NewClient(openAiKey)
-// 	resp, err := client.CreateChatCompletion(
-// 		context.Background(),
-// 		openai.ChatCompletionRequest{
-// 			Model: *model,
-// 			ResponseFormat: &openai.ChatCompletionResponseFormat{
-// 				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
-// 			},
-// 			Messages: []openai.ChatCompletionMessage{
-// 				{
-// 					Role:    openai.ChatMessageRoleSystem,
-// 					Content: prompts.QualitySystemPrompt,
-// 				},
-// 				{
-// 					Role: openai.ChatMessageRoleUser,
-// 					Content: `
-// 					  Issue ID: ` + strconv.Itoa(issueData.Number) + `
-// 					  Issue title: ` + issueData.Title + `
-// 					  Issue description:\n\n ` + issueData.Body + `
-// 					`,
-// 				},
-// 			},
-// 		},
-// 	)
-// 	if err != nil {
-// 		Debug.Printf("ChatCompletion error: %v\n", err)
-// 		return QualityVeredict{}, err
-// 	}
-//
-// 	Debug.Println(resp.Choices[0].Message.Content)
-//
-// 	veredict := QualityVeredict{}
-// 	err = json.Unmarshal([]byte(resp.Choices[0].Message.Content), &veredict)
-// 	if err != nil {
-// 		return QualityVeredict{}, err
-// 	}
-//
-// 	return veredict, nil
-//
-// }
