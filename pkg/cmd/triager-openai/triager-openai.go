@@ -15,7 +15,6 @@ import (
 
 	"github.com/grafana/auto-triage/pkg/github"
 	"github.com/grafana/auto-triage/pkg/logme"
-	"github.com/grafana/auto-triage/pkg/prompts"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
 	"github.com/tiktoken-go/tokenizer"
@@ -36,10 +35,15 @@ type CategorizedIssue struct {
 }
 
 var (
-	openAiKey        = os.Getenv("OPENAI_API_KEY")
-	ghToken          = os.Getenv("GH_TOKEN")
-	issueId          = flag.Int("issueId", 0, "Github Issue ID (only the number)")
-	repo             = flag.String("repo", "grafana/grafana", "Github repo to push the issue to")
+	openAiKey  = os.Getenv("OPENAI_API_KEY")
+	ghToken    = os.Getenv("GH_TOKEN")
+	issueId    = flag.Int("issueId", 0, "Github Issue ID (only the number)")
+	repo       = flag.String("repo", "grafana/grafana", "Github repo to push the issue to")
+	promptFile = flag.String(
+		"promptFile",
+		"fixtures/prompt.txt",
+		"Prompt to use for the categorizer",
+	)
 	categorizerModel = flag.String(
 		"categorizerModel",
 		"gpt-4o", // regular model from openai
@@ -193,6 +197,21 @@ func validateFlags() error {
 		return fmt.Errorf("GH_TOKEN env var is required")
 	}
 
+	_, err := os.Stat(*labelsFile)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("labelsFile %s does not exist", *labelsFile)
+	}
+
+	_, err = os.Stat(*typesFile)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("typesFile %s does not exist", *typesFile)
+	}
+
+	_, err = os.Stat(*promptFile)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("prompt %s does not exist", *promptFile)
+	}
+
 	return nil
 }
 
@@ -219,7 +238,13 @@ func getIssueCategory(
 	typeLabels []string,
 	categoryLabels []string,
 ) (CategorizedIssue, error) {
-	var categoryzerPrompt = prompts.CategorySystemPrompt
+
+	prompt, err := os.ReadFile(*promptFile)
+	if err != nil {
+		return CategorizedIssue{}, err
+	}
+
+	categoryzerPrompt := string(prompt)
 
 	// calculate the number of tokens
 	enc, err := tokenizer.Get(tokenizer.Cl100kBase)
