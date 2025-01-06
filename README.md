@@ -10,20 +10,17 @@ You can use the tool with GitHub Actions to automatically triage issues.
 
 For more information, refer to [GitHub Action integration](./docs/github-action.md)
 
-## Use the OpenAI fine tuned models
-
-To use the OpenAI fine-tuned models,
+## Use auto-triager with OpenAI models
 
 ### Requirements
 
 - Go 1.22.3 or higher installed
 - [Mage](https://magefile.org/)
 - The `GH_TOKEN` environment variable set to a GitHub personal access token with at least read access to public repositories.
+- The `OPENAI_API_KEY` environment variable set to an OpenAI API key.
 
   If you want the tool to also update the issue with the generated labels you can pass the `-addLabels=true` flag.
   To update issues with labels, your token must also have the permissions to add labels to issues.
-
-- A fine-tuned model. For more information, refer to [Generate the datasets for the fine-tuned models](./docs/openai-finetune.md).
 
 ### Run `auto-triager`
 

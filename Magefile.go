@@ -88,60 +88,6 @@ func (Build) Commands(ctx context.Context) error {
 	return nil
 }
 
-func (Run) Scraper() error {
-	mg.Deps(
-		Build.Commands,
-	)
-
-	// check if a GH_TOKEN is defined in env if not fail
-	if os.Getenv("GH_TOKEN") == "" {
-		return fmt.Errorf("GH_TOKEN is not defined")
-	}
-
-	command := []string{
-		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/scraper",
-	}
-
-	return sh.RunV(command[0], command[1:]...)
-
-}
-
-func (Run) TriagerGemini(ctx context.Context, id string) error {
-	mg.Deps(func() error {
-		return buildCommand("triager-gemini", runtime.GOOS+"_"+runtime.GOARCH)
-	})
-
-	command := []string{
-		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/triager-gemini",
-		"-issueId=" + id,
-		"-updateVectors=true",
-		"-vectorDb=vector.db",
-		"-issuesDb=github-data.sqlite",
-	}
-
-	return sh.RunV(command[0], command[1:]...)
-}
-
-func (Run) FineTuner(ctx context.Context, cmd string) error {
-	mg.Deps(func() error {
-		return buildCommand("fine-tuner", runtime.GOOS+"_"+runtime.GOARCH)
-	})
-
-	outFile := fmt.Sprintf("./out/fine-tune-dataset-%s.jsonl", cmd)
-
-	command := []string{
-		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/fine-tuner",
-		"-issuesDb=github-data.sqlite",
-		"-categorizedIdsFile=fixtures/categorizedIds.txt",
-		"-missingInfoIdsFile=fixtures/missingInfoIds.txt",
-		"-goodIssuesIds=fixtures/good-issues-ids.txt",
-		fmt.Sprintf("-outFile=%s", outFile),
-		cmd,
-	}
-
-	return sh.RunV(command[0], command[1:]...)
-}
-
 func (Run) TriagerOpenAI(ctx context.Context, id string) error {
 	mg.Deps(func() error {
 		return buildCommand("triager-openai", runtime.GOOS+"_"+runtime.GOARCH)
@@ -158,18 +104,4 @@ func (Run) TriagerOpenAI(ctx context.Context, id string) error {
 	}
 
 	return sh.RunWith(env, command[0], command[1:]...)
-}
-
-func (Run) ActionTester(ctx context.Context, id string) error {
-	mg.Deps(func() error {
-		return buildCommand("action-tester", runtime.GOOS+"_"+runtime.GOARCH)
-	})
-
-	command := []string{
-		"./bin/" + runtime.GOOS + "_" + runtime.GOARCH + "/action-tester",
-		"-issueId=" + id,
-		"-repo=grafana/grafana-auto-triager-tests",
-	}
-
-	return sh.RunV(command[0], command[1:]...)
 }
