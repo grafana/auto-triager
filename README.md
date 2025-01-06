@@ -40,14 +40,16 @@ Usage of ./bin/linux_amd64/triager-openai:
         Model to use (default "gpt-4o")
   -issueId int
         Github Issue ID (only the number)
-  -labelsFile string
-        Labels file. One label per line (default "fixtures/categoryLabels.txt")
   -repo string
         Github repo to push the issue to (default "grafana/grafana")
   -retries int
         Number of retries to use when categorizing an issue (default 5)
+  -labelsFile string
+        Labels file. One label per line (default "fixtures/categoryLabels.txt")
   -typesFile string
         Types file. One label per line (default "fixtures/typeLabels.txt")
+  -promptFile string
+        Prompt with instructions on how to categorize the issue (default "fixtures/prompt.txt")
 
 ```
 
