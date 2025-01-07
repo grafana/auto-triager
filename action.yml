@@ -16,6 +16,18 @@ inputs:
     description: "Add the labels to the issue"
     required: false
     default: "false"
+  labels_file:
+    description: "Labels file. One label per line"
+    required: false
+    default: "fixtures/categoryLabels.txt"
+  types_file:
+    description: "Types file. One label per line"
+    required: false
+    default: "fixtures/typeLabels.txt"
+  prompt_file:
+    description: "Prompt to use for the categorizer"
+    required: false
+    default: "fixtures/prompt.txt"
 
 outputs:
   triage_labels:
@@ -65,7 +77,14 @@ runs:
         cd ${{ github.action_path }}
         # go mod download
         echo "Running auto triager"
-        go run ${{ github.action_path }}/pkg/cmd/triager-openai/triager-openai.go -issueId ${{ inputs.issue_number }} -repo ${{ github.repository }} -addLabels=${{ inputs.add_labels }} | tee triager_output.txt
+        go run ${{ github.action_path }}/pkg/cmd/triager-openai/triager-openai.go \
+          -issueId ${{ inputs.issue_number }} \
+          -repo ${{ github.repository }} \
+          -addLabels=${{ inputs.add_labels }} \
+          -labelsFile=${{ inputs.labels_file }} \
+          -typesFile=${{ inputs.types_file }} \
+          -promptFile=${{ inputs.prompt_file }} \
+          | tee triager_output.txt
         echo "triager_output=$(cat triager_output.txt)" >> $GITHUB_OUTPUT
         labels=$(cat triager_output.txt | jq -r '.categoryLabel + .typeLabel  | map("\\\"\(.)\\\"")| join(",")')
         echo ""
