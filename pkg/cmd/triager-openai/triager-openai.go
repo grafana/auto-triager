@@ -152,6 +152,18 @@ func main() {
 
 		category.CategoryLabel = realCategories
 
+		// filter out the labels that are not in the typeLabels
+		realTypes := []string{}
+		for _, typeLabel := range category.TypeLabel {
+			if slices.Contains(typeLabels, typeLabel) {
+				realTypes = append(realTypes, typeLabel)
+			} else {
+				logme.DebugF("Type %s is not in typeLabels. Skipping", typeLabel)
+			}
+		}
+
+		category.TypeLabel = realTypes
+
 		break
 	}
 
