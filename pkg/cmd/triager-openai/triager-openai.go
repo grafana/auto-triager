@@ -100,17 +100,6 @@ func main() {
 		logme.FatalLn("Error fetching issue details: Title is empty")
 	}
 
-	// logme.InfoF(":: Checking if issue can be categorized\n")
-
-	// qualityVeredict, err := getIssueIsCategorizable(&issueData, qualitizerModel)
-	//
-	// if err != nil {
-	// 	log.Fatal("Error judging issue quality: ", err)
-	// 	os.Exit(1)
-	// }
-	//
-	// logme.InfoF("Is categorizable: %s\n", strconv.FormatBool(qualityVeredict.IsCategorizable))
-
 	logme.InfoF(":: Categorizing issue\n")
 	logme.DebugF("Repo: %s\n", *repo)
 	logme.DebugF("Issue ID: %d\n", *issueId)
