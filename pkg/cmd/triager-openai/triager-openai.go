@@ -15,6 +15,7 @@ import (
 
 	"github.com/grafana/auto-triage/pkg/github"
 	"github.com/grafana/auto-triage/pkg/logme"
+	"github.com/mrz1836/go-sanitize"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
 	"github.com/tiktoken-go/tokenizer"
@@ -152,6 +153,7 @@ func main() {
 		}
 
 		category.TypeLabel = realTypes
+		category.Remarks = sanitize.AlphaNumeric(category.Remarks, true)
 
 		break
 	}
