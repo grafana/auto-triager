@@ -6,6 +6,7 @@ inputs:
   token:
     description: "GitHub token to access the issue information"
     required: true
+    secret: true
   issue_number:
     description: "The number of the issue to check"
     required: true
@@ -39,14 +40,17 @@ runs:
   steps:
     - name: Fetch issue labels and state
       id: fetch-facts
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        ISSUE_NUMBER: ${{ inputs.issue_number }}
       run: |
         repo="${{ github.repository }}"
-        issue_info=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
-                "https://api.github.com/repos/$repo/issues/${{ inputs.issue_number }}")
+        issue_info=$(curl -s -H "Authorization: token $GH_TOKEN" \
+                "https://api.github.com/repos/$repo/issues/$ISSUE_NUMBER")
         labels=$(echo "$issue_info" | jq -r '.labels | map(.name) | join(",")')
         state=$(echo "$issue_info" | jq -r '.state')
 
-        echo "Issue number: ${{ inputs.issue_number }}"
+        echo "Issue number: $ISSUE_NUMBER"
         echo "Fetched labels: $labels"
         echo "Fetched state: $state"
 
@@ -56,8 +60,11 @@ runs:
 
     - name: check if state is open and no labels are assigned
       id: check-state
+      env:
+        STATE: ${{ steps.fetch-facts.outputs.state }}
+        LABELS: ${{ steps.fetch-facts.outputs.labels }}
       run: |
-        if [ "${{ steps.fetch-facts.outputs.state }}" = "open" ] && [ -z "${{ steps.fetch-facts.outputs.labels }}" ]; then
+        if [ "$STATE" = "open" ] && [ -z "$LABELS" ]; then
           echo "should_triage=true" >> $GITHUB_OUTPUT
         else
           echo "should_triage=false" >> $GITHUB_OUTPUT
@@ -78,12 +85,12 @@ runs:
         # go mod download
         echo "Running auto triager"
         go run ${{ github.action_path }}/pkg/cmd/triager-openai/triager-openai.go \
-          -issueId ${{ inputs.issue_number }} \
-          -repo ${{ github.repository }} \
-          -addLabels=${{ inputs.add_labels }} \
-          -labelsFile=${{ inputs.labels_file }} \
-          -typesFile=${{ inputs.types_file }} \
-          -promptFile=${{ inputs.prompt_file }} \
+          -issueId $ISSUE_NUMBER \
+          -repo $REPO \
+          -addLabels=$ADD_LABELS \
+          -labelsFile=$LABELS_FILE \
+          -typesFile=$TYPES_FILE \
+          -promptFile=$PROMPT_FILE \
           | tee triager_output.txt
         echo "triager_output=$(cat triager_output.txt)" >> $GITHUB_OUTPUT
         labels=$(cat triager_output.txt | jq -r '.categoryLabel + .typeLabel  | map("\\\"\(.)\\\"")| join(",")')
@@ -94,3 +101,9 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        ISSUE_NUMBER: ${{ inputs.issue_number }}
+        REPO: ${{ github.repository }}
+        ADD_LABELS: ${{ inputs.add_labels }}
+        LABELS_FILE: ${{ inputs.labels_file }}
+        TYPES_FILE: ${{ inputs.types_file }}
+        PROMPT_FILE: ${{ inputs.prompt_file }}
