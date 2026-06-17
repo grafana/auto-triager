@@ -47,7 +47,7 @@ var (
 	)
 	categorizerModel = flag.String(
 		"categorizerModel",
-		"gpt-5.2", // regular model from openai
+		"gpt-5.5", // regular model from openai
 		"Model to use",
 	)
 	addLabels = flag.Bool(
