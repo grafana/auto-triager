@@ -27,7 +27,19 @@
         ],
         "groupName": "Go dependencies",
         "description": "Group all Go module dependencies together"
-      }      
+      },
+      {
+        "description": "Automerge: minor/major updates need an approval from the Claude gate workflow before GitHub auto-merge fires",
+        "matchUpdateTypes": ["minor", "major"],
+        "automerge": true,
+        "addLabels": ["claude-gate"]
+      },
+      {
+        "description": "Automerge: clear-cut updates get a direct bot approval, required CI checks still gate the merge",
+        "matchUpdateTypes": ["patch", "pin", "digest", "lockFileMaintenance"],
+        "automerge": true,
+        "addLabels": ["automerge-direct"]
+      }
     ],
     "labels": [
       "dependencies"
