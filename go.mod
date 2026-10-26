@@ -7,7 +7,7 @@ require (
 	github.com/magefile/mage v1.17.2
 	github.com/mrz1836/go-sanitize v1.6.0
 	github.com/sashabaranov/go-openai v1.43.0
-	github.com/tiktoken-go/tokenizer v0.8.1
+	github.com/tiktoken-go/tokenizer v0.10.0
 )
 
 require github.com/dlclark/regexp2/v2 v2.9.1 // indirect
