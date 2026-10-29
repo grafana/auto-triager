@@ -10,4 +10,4 @@ require (
 	github.com/tiktoken-go/tokenizer v0.10.0
 )
 
-require github.com/dlclark/regexp2/v2 v2.10.0 // indirect
+require github.com/dlclark/regexp2/v2 v2.10.1 // indirect
